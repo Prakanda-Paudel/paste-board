@@ -627,12 +627,14 @@
       boardContent.hidden = true;
       supabaseClient.auth.getSession().then(async ({ data, error }) => {
         if (error) throw error;
-        if (!data.session) {
+        if (!data.session || data.session.user.is_anonymous) {
+          if (data.session?.user.is_anonymous) await supabaseClient.auth.signOut();
           currentUserId = null;
           isAdmin = false;
           isApproved = false;
           updateAuthControls();
           feedStatus.textContent = "Sign in required";
+          authStatus.textContent = "Sign in or request an account. New accounts need admin approval.";
           return;
         }
         await showAuthenticatedUser(data.session.user);
