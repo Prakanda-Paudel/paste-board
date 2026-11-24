@@ -1,6 +1,6 @@
 // Supabase client configuration. The anon key is public; database policies protect the data.
 const SUPABASE_URL = "https://sltqzxsprolaxgcqgbjx.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsdHF6eHNwcm9sYXhnY2dianhzcHJvbGF4Z2NicWJqeCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzk1NTAwNDk4LCJleHAiOjIxMTEwNzY0OTh9.jkWaL0YQtI8prGCotROxiYU_x7BrMVD05oQljTVrPuU";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsdHF6eHNwcm9sYXhnY3FnYmp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1MDA0OTgsImV4cCI6MjExMTA3NjQ5OH0.jkWaL0YQtI8prGCotROxiYU_x7BrMVD05oQljTVrPuU";
 const ADMIN_ID = "prakanda";
 const ADMIN_EMAIL = "335849874+prakanda-paudel@users.noreply.github.com";
 const ACCOUNT_EMAIL_DOMAIN = "pasteboard.invalid";
