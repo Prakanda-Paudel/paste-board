@@ -3,200 +3,38 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f3f5f2">
-  <title>Pasteboard | Share text simply</title>
-  <style>
-    /* Keep the palette and sizing in one place so the design is easy to adjust. */
-    :root {
-      color-scheme: light dark;
-      --page: #f3f5f2;
-      --surface: #ffffff;
-      --surface-soft: #e9eee9;
-      --ink: #17241f;
-      --muted: #64736b;
-      --line: #d7dfd9;
-      --accent: #136b50;
-      --accent-hover: #0c5841;
-      --accent-ink: #ffffff;
-      --danger: #a43b32;
-      --focus: #e7aa3e;
-      --shadow: 0 16px 38px rgb(34 55 44 / 8%);
-      font-family: "Aptos", "Segoe UI", sans-serif;
-      font-synthesis: none;
-      text-rendering: optimizeLegibility;
-    }
-
-    /* Follow the visitor's operating-system appearance preference. */
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --page: #111815;
-        --surface: #1b2420;
-        --surface-soft: #242f29;
-        --ink: #eef4ef;
-        --muted: #a4b2a9;
-        --line: #35433b;
-        --accent: #79d3ac;
-        --accent-hover: #9be4c2;
-        --accent-ink: #10251b;
-        --danger: #f28275;
-        --focus: #f0bf64;
-        --shadow: 0 16px 38px rgb(0 0 0 / 18%);
-      }
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      min-width: 320px;
-      min-height: 100vh;
-      margin: 0;
-      background-color: var(--page);
-      background-image: radial-gradient(ellipse at 12% 0%, rgb(91 157 118 / 10%), transparent 37%);
-      color: var(--ink);
-    }
-
-    button, input, textarea { font: inherit; }
-    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-
-    .page-shell { width: min(100% - 40px, 860px); margin: 0 auto; padding: 48px 0 72px; }
-    .masthead { display: flex; align-items: center; gap: 12px; margin-bottom: 48px; }
-    .brand-mark {
-      display: grid;
-      width: 38px;
-      height: 38px;
-      place-items: center;
-      border-radius: 11px;
-      background: var(--accent);
-      color: var(--accent-ink);
-      font-size: 19px;
-      font-weight: 800;
-    }
-    .brand-name { font-size: 16px; font-weight: 750; letter-spacing: 0.02em; }
-    .account-toggle { display: grid; width: 40px; height: 40px; flex: 0 0 40px; place-items: center; margin-left: auto; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); cursor: pointer; }
-    .account-toggle:hover { background: var(--surface-soft); }
-    .account-toggle svg { width: 20px; height: 20px; }
-    .account-panel { margin-bottom: 28px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
-    .account-panel[hidden] { display: none; }
-    .account-form { display: grid; max-width: 560px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
-    .account-form label { color: var(--muted); font-size: 12px; font-weight: 700; }
-    .account-form input { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 5px; background: var(--page); color: var(--ink); }
-    .account-actions { display: flex; min-height: 40px; grid-column: 1 / -1; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .account-button { min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 13px; font-weight: 700; }
-    .account-button:disabled { cursor: wait; opacity: 0.6; }
-    #auth-status, #approval-status { margin: 0; color: var(--muted); font-size: 12px; }
-    .admin-tools { max-width: 560px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
-    .admin-tools h2 { margin: 0 0 8px; font-size: 16px; }
-    .pending-list { margin: 12px 0 0; padding: 0; list-style: none; }
-    .pending-user { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
-    .pending-user-name { min-width: 0; overflow-wrap: anywhere; font-weight: 700; }
-    .pending-user-time { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 400; }
-    .intro { margin-bottom: 28px; }
-    h1 { margin: 0; font-size: clamp(30px, 5vw, 42px); line-height: 1.12; letter-spacing: 0; }
-    .intro p { margin: 10px 0 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
-
-    .composer {
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--surface);
-      box-shadow: var(--shadow);
-      animation: arrive 380ms ease-out both;
-    }
-    .composer-label { display: block; margin: 1px 2px 11px; font-size: 13px; font-weight: 700; }
-    #paste-title {
-      display: block;
-      width: 100%;
-      margin-bottom: 16px;
-      padding: 12px 14px;
-      border: 1px solid var(--line);
-      border-radius: 5px;
-      background: var(--page);
-      color: var(--ink);
-      font-size: 15px;
-    }
-    #paste-title::placeholder { color: var(--muted); opacity: 0.8; }
-    #paste-input {
-      display: block;
-      width: 100%;
-      min-height: 190px;
-      resize: vertical;
-      padding: 15px;
-      border: 1px solid var(--line);
-      border-radius: 5px;
-      background: var(--page);
-      color: var(--ink);
-      font-family: "Cascadia Code", "Consolas", monospace;
-      font-size: 14px;
-      line-height: 1.6;
-      tab-size: 2;
-    }
-    #paste-input::placeholder { color: var(--muted); opacity: 0.8; }
-    .composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 2px 1px; }
-    .hint { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
-    .share-button {
-      min-height: 44px;
-      padding: 0 20px;
-      border: 0;
-      border-radius: 5px;
-      background: var(--accent);
-      color: var(--accent-ink);
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 750;
-      transition: background-color 140ms ease, transform 140ms ease;
-    }
-    .share-button:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-1px); }
-    .share-button:disabled { cursor: wait; opacity: 0.65; }
-
-    .feed-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 42px 2px 15px; }
-    .feed-heading h2 { margin: 0; font-size: 19px; line-height: 1.3; }
-    #feed-status { margin: 0; color: var(--muted); font-size: 12px; text-align: right; }
-    .paste-list { display: grid; gap: 12px; }
-    .paste-item { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); animation: arrive 260ms ease-out both; }
-    .paste-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
-    .paste-time { color: var(--muted); font-size: 12px; }
-    .paste-actions { display: flex; align-items: center; gap: 8px; }
-    .copy-button, .delete-button { display: inline-flex; min-height: 34px; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; }
-    .copy-button:hover { background: var(--surface-soft); }
-    .delete-button { color: var(--danger); }
-    .delete-button:hover { background: var(--surface-soft); }
-    .copy-button:disabled, .delete-button:disabled { cursor: wait; opacity: 0.6; }
-    .copy-button svg { width: 14px; height: 14px; }
-    .paste-title { margin: 0; padding: 16px 16px 0; font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
-    .paste-content { overflow-x: auto; margin: 0; padding: 16px; color: var(--ink); font-family: "Cascadia Code", "Consolas", monospace; font-size: 13px; line-height: 1.65; tab-size: 2; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .empty-state { padding: 34px 18px; border: 1px dashed var(--line); border-radius: 7px; color: var(--muted); text-align: center; font-size: 14px; }
-    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-
-    @keyframes arrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
-    @media (max-width: 560px) {
-      .page-shell { width: min(100% - 28px, 860px); padding-top: 26px; }
-      .masthead { margin-bottom: 38px; }
-      .account-panel { padding: 13px; }
-      .account-form { grid-template-columns: 1fr; }
-      .composer { padding: 13px; }
-      #paste-input { min-height: 170px; padding: 12px; }
-      .composer-footer { align-items: flex-start; }
-      .hint { max-width: 190px; padding-top: 3px; }
-      .share-button { padding: 0 16px; }
-      .feed-heading { margin-top: 34px; }
-    }
-  </style>
+  <meta name="theme-color" content="#f3f7f4">
+  <meta name="description" content="Projects, ideas and fun, all in one place.">
+  <title>Hub | Projects, ideas and fun</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.js"></script>
+  <script defer src="script.js"></script>
 </head>
 <body>
-  <main class="page-shell">
-    <header class="masthead" aria-label="Pasteboard">
-      <span class="brand-mark" aria-hidden="true">P</span>
-      <span class="brand-name">PASTEBOARD</span>
-      <button class="account-toggle" id="account-toggle" type="button" aria-label="Open account panel" aria-controls="account-panel" aria-expanded="false" title="Account">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-          <circle cx="12" cy="8" r="4"></circle>
-          <path d="M4 21a8 8 0 0 1 16 0"></path>
-        </svg>
-      </button>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="wordmark" href="#home" aria-label="Hub home" data-home-link>
+        <span class="wordmark-symbol" aria-hidden="true">H</span>
+        <span>Hub</span>
+      </a>
+      <nav class="primary-nav" aria-label="Main navigation" role="tablist">
+        <button class="nav-tab is-active" id="tab-home" type="button" role="tab" aria-selected="true" data-view="home">Home</button>
+        <button class="nav-tab" id="tab-projects" type="button" role="tab" aria-selected="false" data-view="projects">Projects</button>
+        <button class="nav-tab" id="tab-ideas" type="button" role="tab" aria-selected="false" data-view="ideas">Ideas</button>
+        <button class="nav-tab" id="tab-polls" type="button" role="tab" aria-selected="false" data-view="polls">Polls</button>
+        <button class="nav-tab" id="tab-paste" type="button" role="tab" aria-selected="false" data-view="paste">Paste</button>
+      </nav>
+      <div class="topbar-actions">
+        <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.2 15.1A8.4 8.4 0 0 1 8.9 3.8 8.8 8.8 0 1 0 20.2 15.1Z"></path></svg>
+        </button>
+        <button class="icon-button" id="account-toggle" type="button" aria-label="Open account panel" aria-controls="account-panel" aria-expanded="false" title="Account">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+        </button>
+      </div>
     </header>
 
-    <!-- Username sign-in and account requests; Supabase controls approval and access. -->
     <section class="account-panel" id="account-panel" aria-label="Account access" hidden>
       <form class="account-form" id="auth-form">
         <label for="account-username">Username</label>
@@ -204,505 +42,121 @@
         <input id="account-username" name="username" type="text" maxlength="24" autocomplete="username" required>
         <input id="account-password" name="password" type="password" autocomplete="current-password" required>
         <div class="account-actions">
-          <button class="account-button" id="auth-submit" type="submit">Log in</button>
-          <button class="account-button" id="auth-mode-toggle" type="button">Request an account</button>
-          <button class="account-button" id="auth-check-approval" type="button" hidden>Check approval</button>
-          <button class="account-button" id="auth-logout" type="button" hidden>Log out</button>
-          <p id="auth-status" role="status" aria-live="polite">Sign in or request an account. New accounts need admin approval.</p>
+          <button class="button button-primary" id="auth-submit" type="submit">Log in</button>
+          <button class="button button-quiet" id="auth-mode-toggle" type="button">Request an account</button>
+          <button class="button button-quiet" id="auth-check-approval" type="button" hidden>Check approval</button>
+          <button class="button button-quiet" id="auth-logout" type="button" hidden>Log out</button>
+          <p id="auth-status" class="status-message" role="status" aria-live="polite">Sign in or request an account. New accounts need admin approval.</p>
         </div>
       </form>
       <section class="admin-tools" id="admin-tools" aria-labelledby="pending-title" hidden>
-        <h2 id="pending-title">Pending account requests</h2>
-        <p id="approval-status" role="status" aria-live="polite"></p>
-        <button class="account-button" id="refresh-approvals" type="button">Refresh requests</button>
+        <div class="section-heading compact-heading">
+          <div><p class="eyebrow">Admin</p><h2 id="pending-title">Pending accounts</h2></div>
+          <button class="button button-quiet" id="refresh-approvals" type="button">Refresh</button>
+        </div>
+        <p id="approval-status" class="status-message" role="status" aria-live="polite"></p>
         <ul class="pending-list" id="pending-list"></ul>
       </section>
     </section>
 
-    <section class="intro" aria-labelledby="page-title">
-      <h1 id="page-title">A place for your paste.</h1>
-      <p>Drop in a snippet, share it with your people, and keep moving.</p>
-    </section>
+    <main id="main-content">
+      <section class="view home-view" id="view-home" role="tabpanel" aria-labelledby="tab-home">
+        <div class="home-hero">
+          <div class="hero-copy">
+            <p class="eyebrow">A shared space</p>
+            <h1>Welcome to <span>Hub.</span></h1>
+            <p class="hero-tagline">Projects, ideas and fun, all in one place.</p>
+            <p class="hero-description">A home for what we’re making, thinking about, and deciding together.</p>
+          </div>
+          <div class="hero-stamp" aria-hidden="true"><span>H</span><small>community<br>board</small></div>
+        </div>
+        <div class="section-heading quick-heading"><div><p class="eyebrow">Find your way</p><h2>Explore Hub</h2></div></div>
+        <div class="quick-grid">
+          <button class="quick-link quick-projects" type="button" data-go-view="projects"><span class="quick-number">01</span><span><strong>Projects</strong><small>What we’re building</small></span><span class="quick-arrow" aria-hidden="true">↗</span></button>
+          <button class="quick-link quick-ideas" type="button" data-go-view="ideas"><span class="quick-number">02</span><span><strong>Ideas</strong><small>What’s on our minds</small></span><span class="quick-arrow" aria-hidden="true">↗</span></button>
+          <button class="quick-link quick-polls" type="button" data-go-view="polls"><span class="quick-number">03</span><span><strong>Polls</strong><small>Make a call together</small></span><span class="quick-arrow" aria-hidden="true">↗</span></button>
+          <button class="quick-link quick-paste" type="button" data-go-view="paste"><span class="quick-number">04</span><span><strong>Paste</strong><small>Share text and code</small></span><span class="quick-arrow" aria-hidden="true">↗</span></button>
+        </div>
+      </section>
 
-    <div id="board-content" hidden>
-    <!-- The form collects a paste and submits it without reloading the page. -->
-    <form class="composer" id="paste-form">
-      <label class="composer-label" for="paste-title">Title</label>
-      <input id="paste-title" name="title" type="text" maxlength="120" placeholder="Give this paste a title..." required>
-      <label class="composer-label" for="paste-input">Your text or code</label>
-      <textarea id="paste-input" name="content" placeholder="Paste something here..." required spellcheck="false" aria-describedby="share-hint"></textarea>
-      <div class="composer-footer">
-        <p class="hint" id="share-hint">Only approved accounts can read or share pastes.</p>
-        <button class="share-button" id="share-button" type="submit">Share paste</button>
-      </div>
-    </form>
+      <section class="view" id="view-projects" role="tabpanel" aria-labelledby="tab-projects" hidden>
+        <div class="section-heading">
+          <div><p class="eyebrow">Make it happen</p><h1>Projects</h1><p class="section-description">A living list of things we want to make.</p></div>
+          <p class="section-status" id="projects-status" role="status" aria-live="polite"></p>
+        </div>
+        <details class="form-disclosure">
+          <summary class="button button-primary">Add a project</summary>
+          <form id="project-form" class="data-form">
+            <label for="project-title">Title</label>
+            <input id="project-title" name="title" maxlength="120" required>
+            <label for="project-description">Description</label>
+            <textarea id="project-description" name="description" maxlength="500" rows="3" required></textarea>
+            <div class="form-row">
+              <div><label for="project-status">Status</label><select id="project-status" name="status"><option>Idea</option><option>In progress</option><option>Done</option></select></div>
+              <div><label for="project-tags">Tags</label><input id="project-tags" name="tags" maxlength="120" placeholder="art, weekend, app"></div>
+            </div>
+            <label for="project-link">Link <span class="optional">Optional</span></label>
+            <input id="project-link" name="link" type="url" maxlength="400" placeholder="https://">
+            <div class="form-actions"><button class="button button-primary" type="submit">Save project</button><p class="status-message" id="project-form-status" role="status"></p></div>
+          </form>
+        </details>
+        <div class="project-grid" id="project-list" aria-live="polite"></div>
+      </section>
 
-    <!-- New pastes are added here by JavaScript using safe text nodes. -->
-    <section aria-labelledby="feed-title">
-      <div class="feed-heading">
-        <h2 id="feed-title">Recent pastes</h2>
-        <p id="feed-status" role="status" aria-live="polite">Connecting...</p>
-      </div>
-      <div class="paste-list" id="paste-list" aria-live="polite"></div>
-    </section>
-    </div>
-  </main>
+      <section class="view" id="view-ideas" role="tabpanel" aria-labelledby="tab-ideas" hidden>
+        <div class="section-heading">
+          <div><p class="eyebrow">Plant a seed</p><h1>Ideas</h1><p class="section-description">Small thoughts can turn into great plans.</p></div>
+          <p class="section-status" id="ideas-status" role="status" aria-live="polite"></p>
+        </div>
+        <form id="idea-form" class="idea-form">
+          <label class="sr-only" for="idea-text">Your idea</label>
+          <textarea id="idea-text" name="idea" maxlength="500" rows="3" placeholder="What should we try?" required></textarea>
+          <div class="form-actions"><p class="field-count" id="idea-count">0 / 500</p><button class="button button-primary" type="submit">Post idea</button></div>
+          <p class="status-message" id="idea-form-status" role="status"></p>
+        </form>
+        <div class="idea-list" id="idea-list" aria-live="polite"></div>
+      </section>
 
-  <!-- Pinned CDN version keeps this no-build page on a known supabase-js release. -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.js"></script>
-  <script>
-    // Replace these placeholders with the values from your Supabase project's API settings.
-    const SUPABASE_URL = "https://sltqzxsprolaxgcqgbjx.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsdHF6eHNwcm9sYXhnY3FnYmp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1MDA0OTgsImV4cCI6MjExMTA3NjQ5OH0.jkWaL0YQtI8prGCotROxiYU_x7BrMVD05oQljTVrPuU";
-    const ADMIN_ID = "prakanda";
-    const ADMIN_EMAIL = "335849874+prakanda-paudel@users.noreply.github.com";
-    const ACCOUNT_EMAIL_DOMAIN = "pasteboard.invalid";
+      <section class="view" id="view-polls" role="tabpanel" aria-labelledby="tab-polls" hidden>
+        <div class="section-heading">
+          <div><p class="eyebrow">Choose together</p><h1>Polls</h1><p class="section-description">Make a poll, cast a vote, see where we land.</p></div>
+          <p class="section-status" id="polls-status" role="status" aria-live="polite"></p>
+        </div>
+        <details class="form-disclosure poll-disclosure">
+          <summary class="button button-primary">Create a poll</summary>
+          <form id="poll-form" class="data-form">
+            <label for="poll-question">Question</label>
+            <input id="poll-question" name="question" maxlength="200" required>
+            <fieldset class="option-fieldset"><legend>Options <span class="optional">2 to 6</span></legend><div class="poll-option-inputs" id="poll-option-inputs"></div></fieldset>
+            <div class="form-actions"><button class="button button-quiet" id="add-option" type="button">Add option</button><button class="button button-primary" type="submit">Publish poll</button></div>
+            <p class="status-message" id="poll-form-status" role="status"></p>
+          </form>
+        </details>
+        <div class="poll-list" id="poll-list" aria-live="polite"></div>
+      </section>
 
-    // Only create the client after both placeholders have been replaced.
-    const isConfigured = SUPABASE_URL.startsWith("https://") && !SUPABASE_ANON_KEY.startsWith("YOUR_");
-    const supabaseClient = isConfigured
-      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-      : null;
-    const pasteForm = document.querySelector("#paste-form");
-    const pasteTitleInput = document.querySelector("#paste-title");
-    const pasteInput = document.querySelector("#paste-input");
-    const shareButton = document.querySelector("#share-button");
-    const pasteList = document.querySelector("#paste-list");
-    const feedStatus = document.querySelector("#feed-status");
-    const boardContent = document.querySelector("#board-content");
-    const accountToggle = document.querySelector("#account-toggle");
-    const accountPanel = document.querySelector("#account-panel");
-    const authForm = document.querySelector("#auth-form");
-    const accountUsernameInput = document.querySelector("#account-username");
-    const accountPasswordInput = document.querySelector("#account-password");
-    const authSubmitButton = document.querySelector("#auth-submit");
-    const authModeToggle = document.querySelector("#auth-mode-toggle");
-    const authCheckApprovalButton = document.querySelector("#auth-check-approval");
-    const authLogoutButton = document.querySelector("#auth-logout");
-    const authStatus = document.querySelector("#auth-status");
-    const adminTools = document.querySelector("#admin-tools");
-    const approvalStatus = document.querySelector("#approval-status");
-    const pendingList = document.querySelector("#pending-list");
-    const refreshApprovalsButton = document.querySelector("#refresh-approvals");
-    let currentUserId = null;
-    let isAdmin = false;
-    let isApproved = false;
-    let isSignUpMode = false;
-    let refreshTimer = null;
+      <section class="view" id="view-paste" role="tabpanel" aria-labelledby="tab-paste" hidden>
+        <div class="section-heading">
+          <div><p class="eyebrow">Quick share</p><h1>Paste</h1><p class="section-description">Text and code, shared with approved Hub members.</p></div>
+          <p class="section-status" id="paste-status" role="status" aria-live="polite"></p>
+        </div>
+        <div class="locked-message" id="paste-locked">
+          <p>Sign in with an approved account to view and share pastes.</p>
+          <button class="button button-quiet" type="button" data-open-account>Open account</button>
+        </div>
+        <div id="paste-content-area" hidden>
+          <form class="paste-form" id="paste-form">
+            <div class="form-row"><div class="paste-title-field"><label for="paste-title">Title</label><input id="paste-title" name="title" type="text" maxlength="120" placeholder="Give it a title" required></div></div>
+            <label for="paste-input">Text or code</label>
+            <textarea id="paste-input" name="content" maxlength="20000" rows="8" placeholder="Paste something here..." required spellcheck="false"></textarea>
+            <div class="form-actions"><p class="status-message" id="paste-form-status" role="status"></p><button class="button button-primary" id="share-button" type="submit">Share paste</button></div>
+          </form>
+          <div class="paste-list" id="paste-list" aria-live="polite"></div>
+        </div>
+      </section>
+    </main>
 
-    // Let visitors open and close account tools without taking space by default.
-    accountToggle.addEventListener("click", () => {
-      const isOpening = accountPanel.hidden;
-      accountPanel.hidden = !isOpening;
-      accountToggle.setAttribute("aria-expanded", String(isOpening));
-      accountToggle.setAttribute("aria-label", isOpening ? "Close account panel" : "Open account panel");
-      accountToggle.title = isOpening ? "Close account panel" : "Account";
-      if (isOpening) {
-        (currentUserId ? authLogoutButton : accountUsernameInput).focus();
-      }
-    });
-
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && !accountPanel.hidden) {
-        accountPanel.hidden = true;
-        accountToggle.setAttribute("aria-expanded", "false");
-        accountToggle.setAttribute("aria-label", "Open account panel");
-        accountToggle.title = "Account";
-        accountToggle.focus();
-      }
-    });
-
-    // The username becomes an internal, non-deliverable Supabase Auth email alias.
-    function usernameToEmail(username) {
-      return username === ADMIN_ID ? ADMIN_EMAIL : `${username}@${ACCOUNT_EMAIL_DOMAIN}`;
-    }
-
-    // Keep account controls and protected board content in the correct access state.
-    function updateAuthControls() {
-      const signedIn = Boolean(currentUserId);
-      accountUsernameInput.disabled = signedIn;
-      accountPasswordInput.disabled = signedIn;
-      authSubmitButton.hidden = signedIn;
-      authModeToggle.hidden = signedIn;
-      authCheckApprovalButton.hidden = !signedIn || isApproved || isAdmin;
-      authLogoutButton.hidden = !signedIn;
-      authSubmitButton.textContent = isSignUpMode ? "Request account" : "Log in";
-      authModeToggle.textContent = isSignUpMode ? "Back to log in" : "Request an account";
-      accountPasswordInput.autocomplete = isSignUpMode ? "new-password" : "current-password";
-      adminTools.hidden = !isAdmin;
-      boardContent.hidden = !(isAdmin || isApproved);
-      shareButton.disabled = !(isAdmin || isApproved);
-    }
-
-    // This small icon is built with DOM methods so paste content is never interpreted as HTML.
-    function makeCopyIcon() {
-      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      icon.setAttribute("viewBox", "0 0 24 24");
-      icon.setAttribute("fill", "none");
-      icon.setAttribute("stroke", "currentColor");
-      icon.setAttribute("stroke-width", "1.8");
-      icon.setAttribute("aria-hidden", "true");
-      const back = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      back.setAttribute("x", "8");
-      back.setAttribute("y", "8");
-      back.setAttribute("width", "12");
-      back.setAttribute("height", "12");
-      back.setAttribute("rx", "2");
-      const front = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      front.setAttribute("d", "M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3");
-      icon.append(back, front);
-      return icon;
-    }
-
-    // Fetch the complete feed in newest-first order and safely rebuild its visible entries.
-    async function loadPastes() {
-      if (!supabaseClient || !currentUserId || (!isApproved && !isAdmin)) return;
-      feedStatus.textContent = "Refreshing...";
-      const { data, error } = await supabaseClient
-        .from("pastes")
-        .select("id, title, content, created_at, owner_id")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        feedStatus.textContent = "Could not load pastes";
-        if (pasteList.childElementCount === 0) {
-          const errorMessage = document.createElement("p");
-          errorMessage.className = "empty-state";
-          errorMessage.textContent = "Could not connect to the paste board. Check your Supabase settings and try again.";
-          pasteList.replaceChildren(errorMessage);
-        }
-        return;
-      }
-
-      pasteList.replaceChildren();
-      if (data.length === 0) {
-        const emptyMessage = document.createElement("p");
-        emptyMessage.className = "empty-state";
-        emptyMessage.textContent = "Nothing here yet. Share the first paste.";
-        pasteList.append(emptyMessage);
-      } else {
-        data.forEach((paste) => pasteList.append(createPasteElement(paste)));
-      }
-      feedStatus.textContent = "Updates every 10 seconds";
-    }
-
-    // Create one paste row. All user-provided content is assigned through textContent.
-    function createPasteElement(paste) {
-      const article = document.createElement("article");
-      article.className = "paste-item";
-
-      const metadata = document.createElement("div");
-      metadata.className = "paste-meta";
-      const timestamp = document.createElement("time");
-      timestamp.className = "paste-time";
-      timestamp.dateTime = paste.created_at;
-      timestamp.textContent = new Date(paste.created_at).toLocaleString();
-
-      const actions = document.createElement("div");
-      actions.className = "paste-actions";
-      const copyButton = document.createElement("button");
-      copyButton.className = "copy-button";
-      copyButton.type = "button";
-      copyButton.setAttribute("aria-label", "Copy paste to clipboard");
-      copyButton.append(makeCopyIcon());
-      const copyLabel = document.createElement("span");
-      copyLabel.textContent = "Copy";
-      copyButton.append(copyLabel);
-      copyButton.addEventListener("click", async () => {
-        try {
-          await navigator.clipboard.writeText(paste.content);
-          copyLabel.textContent = "Copied";
-          window.setTimeout(() => { copyLabel.textContent = "Copy"; }, 1500);
-        } catch (error) {
-          copyLabel.textContent = "Copy failed";
-          window.setTimeout(() => { copyLabel.textContent = "Copy"; }, 2000);
-        }
-      });
-
-      const content = document.createElement("pre");
-      content.className = "paste-content";
-      content.textContent = paste.content;
-      actions.append(copyButton);
-
-      if (isAdmin || paste.owner_id === currentUserId) {
-        const deleteButton = document.createElement("button");
-        deleteButton.className = "delete-button";
-        deleteButton.type = "button";
-        deleteButton.textContent = "Delete";
-        deleteButton.setAttribute("aria-label", `Delete ${paste.title}`);
-        deleteButton.addEventListener("click", async () => {
-          if (!window.confirm(`Delete "${paste.title}"? This cannot be undone.`)) return;
-
-          deleteButton.disabled = true;
-          deleteButton.textContent = "Deleting...";
-          let deleteQuery = supabaseClient
-            .from("pastes")
-            .delete()
-            .eq("id", paste.id);
-          if (!isAdmin) deleteQuery = deleteQuery.eq("owner_id", currentUserId);
-          const { data: deletedRows, error } = await deleteQuery.select("id");
-
-          if (error || !deletedRows || deletedRows.length === 0) {
-            feedStatus.textContent = "Could not delete paste. Please try again.";
-            deleteButton.disabled = false;
-            deleteButton.textContent = "Delete";
-            return;
-          }
-          await loadPastes();
-        });
-        actions.append(deleteButton);
-      }
-
-      const title = document.createElement("h3");
-      title.className = "paste-title";
-      title.textContent = paste.title || "Untitled paste";
-      metadata.append(timestamp, actions);
-      article.append(metadata, title, content);
-      return article;
-    }
-
-    // The database decides admin and approval status; browser-supplied usernames grant nothing.
-    async function checkAdminRole() {
-      const { data, error } = await supabaseClient.rpc("is_pasteboard_admin");
-      if (error) return false;
-      return data === true;
-    }
-
-    async function checkApprovalStatus() {
-      const { data, error } = await supabaseClient.rpc("is_pasteboard_approved");
-      if (error) return false;
-      return data === true;
-    }
-
-    async function loadPendingUsers() {
-      if (!isAdmin) return;
-      approvalStatus.textContent = "Loading requests...";
-      const { data, error } = await supabaseClient.rpc("get_pending_pasteboard_users");
-      if (error) {
-        approvalStatus.textContent = "Could not load approval requests.";
-        return;
-      }
-
-      pendingList.replaceChildren();
-      if (data.length === 0) {
-        approvalStatus.textContent = "No pending requests.";
-        return;
-      }
-
-      approvalStatus.textContent = `${data.length} request${data.length === 1 ? "" : "s"} waiting.`;
-      data.forEach((member) => {
-        const row = document.createElement("li");
-        row.className = "pending-user";
-        const details = document.createElement("div");
-        const username = document.createElement("span");
-        username.className = "pending-user-name";
-        username.textContent = member.username;
-        const created = document.createElement("time");
-        created.className = "pending-user-time";
-        created.dateTime = member.created_at;
-        created.textContent = new Date(member.created_at).toLocaleString();
-        const approveButton = document.createElement("button");
-        approveButton.className = "account-button";
-        approveButton.type = "button";
-        approveButton.textContent = "Approve";
-        approveButton.addEventListener("click", async () => {
-          approveButton.disabled = true;
-          approveButton.textContent = "Approving...";
-          const { error: approveError } = await supabaseClient.rpc("approve_pasteboard_user", {
-            target_user_id: member.user_id
-          });
-          if (approveError) {
-            approvalStatus.textContent = "Could not approve this account.";
-            approveButton.disabled = false;
-            approveButton.textContent = "Approve";
-            return;
-          }
-          await loadPendingUsers();
-        });
-        details.append(username, created);
-        row.append(details, approveButton);
-        pendingList.append(row);
-      });
-    }
-
-    async function showAuthenticatedUser(user, requestedUsername = "") {
-      currentUserId = user.id;
-      isAdmin = await checkAdminRole();
-      isApproved = isAdmin || await checkApprovalStatus();
-      accountUsernameInput.value = isAdmin
-        ? ADMIN_ID
-        : (user.user_metadata?.username || requestedUsername);
-      accountPasswordInput.value = "";
-      updateAuthControls();
-
-      if (!isApproved) {
-        pasteList.replaceChildren();
-        feedStatus.textContent = "Approval required";
-        authStatus.textContent = "Account request received. You can use the board after the admin approves it.";
-        return;
-      }
-
-      authStatus.textContent = isAdmin ? "Admin signed in." : "Account approved. You are signed in.";
-      await loadPastes();
-      if (isAdmin) await loadPendingUsers();
-      if (!refreshTimer) refreshTimer = window.setInterval(loadPastes, 10000);
-    }
-
-    // New members use a username-only alias; only an admin-approved account can access the board.
-    authForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (!supabaseClient) return;
-      const username = accountUsernameInput.value.trim().toLowerCase();
-      const password = accountPasswordInput.value;
-      if (!/^[a-z0-9_]{3,24}$/.test(username)) {
-        authStatus.textContent = "Use 3–24 letters, numbers, or underscores for your username.";
-        return;
-      }
-      if (isSignUpMode && username === ADMIN_ID) {
-        authStatus.textContent = "That username is reserved.";
-        return;
-      }
-      if (isSignUpMode && password.length < 8) {
-        authStatus.textContent = "Choose a password with at least 8 characters.";
-        return;
-      }
-
-      authSubmitButton.disabled = true;
-      authStatus.textContent = isSignUpMode ? "Submitting account request..." : "Signing in...";
-      const email = usernameToEmail(username);
-      if (isSignUpMode) {
-        const { data, error } = await supabaseClient.auth.signUp({
-          email,
-          password,
-          options: { data: { username } }
-        });
-        accountPasswordInput.value = "";
-        if (error) {
-          authStatus.textContent = "Could not create account. That username may already be in use.";
-          authSubmitButton.disabled = false;
-          return;
-        }
-        if (!data.session) {
-          authStatus.textContent = "Account request created. Log in after the account is ready.";
-          authSubmitButton.disabled = false;
-          return;
-        }
-        await showAuthenticatedUser(data.user, username);
-        authSubmitButton.disabled = false;
-        return;
-      }
-
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      accountPasswordInput.value = "";
-
-      if (error) {
-        authStatus.textContent = "Sign-in failed. Check the username and password.";
-        authSubmitButton.disabled = false;
-        return;
-      }
-
-      await showAuthenticatedUser(data.user, username);
-      authSubmitButton.disabled = false;
-    });
-
-    // Switch between signing in and requesting a new account.
-    authModeToggle.addEventListener("click", () => {
-      isSignUpMode = !isSignUpMode;
-      accountPasswordInput.value = "";
-      authStatus.textContent = isSignUpMode
-        ? "New accounts cannot read or post until the admin approves them."
-        : "Sign in or request an account. New accounts need admin approval.";
-      updateAuthControls();
-    });
-
-    // Let a pending member recheck after the admin approves their account.
-    authCheckApprovalButton.addEventListener("click", async () => {
-      authCheckApprovalButton.disabled = true;
-      authStatus.textContent = "Checking approval...";
-      const { data, error } = await supabaseClient.auth.getUser();
-      if (error || !data.user) {
-        authStatus.textContent = "Could not check approval. Please sign in again.";
-        authCheckApprovalButton.disabled = false;
-        return;
-      }
-      await showAuthenticatedUser(data.user, accountUsernameInput.value);
-      authCheckApprovalButton.disabled = false;
-    });
-
-    refreshApprovalsButton.addEventListener("click", loadPendingUsers);
-
-    // Signing out hides all protected data and actions immediately.
-    authLogoutButton.addEventListener("click", async () => {
-      authLogoutButton.disabled = true;
-      const { error } = await supabaseClient.auth.signOut();
-      if (error) {
-        authStatus.textContent = "Could not sign out. Please try again.";
-        authLogoutButton.disabled = false;
-        return;
-      }
-      currentUserId = null;
-      isAdmin = false;
-      isApproved = false;
-      isSignUpMode = false;
-      pasteList.replaceChildren();
-      feedStatus.textContent = "Sign in required";
-      authStatus.textContent = "Signed out. Sign in or request an account.";
-      updateAuthControls();
-      authLogoutButton.disabled = false;
-    });
-
-    // Insert the original text, then clear the composer only after a successful save.
-    pasteForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (!supabaseClient || !currentUserId || (!isApproved && !isAdmin)) return;
-      const title = pasteTitleInput.value.trim();
-      const content = pasteInput.value;
-      if (!title || !content.trim()) return;
-
-      shareButton.disabled = true;
-      shareButton.textContent = "Sharing...";
-      const { error } = await supabaseClient
-        .from("pastes")
-        .insert({ title, content, owner_id: currentUserId });
-      if (error) {
-        feedStatus.textContent = "Could not share paste. Please try again.";
-      } else {
-        pasteTitleInput.value = "";
-        pasteInput.value = "";
-        feedStatus.textContent = "Paste shared";
-        await loadPastes();
-      }
-      shareButton.disabled = false;
-      shareButton.textContent = "Share paste";
-    });
-
-    // Restore a saved login, but never create an anonymous account.
-    if (supabaseClient) {
-      shareButton.disabled = true;
-      boardContent.hidden = true;
-      supabaseClient.auth.getSession().then(async ({ data, error }) => {
-        if (error) throw error;
-        if (!data.session || data.session.user.is_anonymous) {
-          if (data.session?.user.is_anonymous) await supabaseClient.auth.signOut();
-          currentUserId = null;
-          isAdmin = false;
-          isApproved = false;
-          updateAuthControls();
-          feedStatus.textContent = "Sign in required";
-          authStatus.textContent = "Sign in or request an account. New accounts need admin approval.";
-          return;
-        }
-        await showAuthenticatedUser(data.session.user);
-      }).catch(() => {
-        authStatus.textContent = "Could not connect to sign-in. Please reload and try again.";
-        feedStatus.textContent = "Sign in unavailable";
-      });
-    } else {
-      shareButton.disabled = true;
-      boardContent.hidden = true;
-      feedStatus.textContent = "Setup required";
-      authStatus.textContent = "Supabase setup is required before signing in.";
-    }
-  </script>
+    <footer class="site-footer"><span class="footer-mark">H</span><span>Hub</span><span class="footer-tagline">Projects, ideas and fun, all in one place.</span></footer>
+  </div>
 </body>
 </html>
