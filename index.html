@@ -72,7 +72,11 @@
       font-weight: 800;
     }
     .brand-name { font-size: 16px; font-weight: 750; letter-spacing: 0.02em; }
+    .account-toggle { display: grid; width: 40px; height: 40px; flex: 0 0 40px; place-items: center; margin-left: auto; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); cursor: pointer; }
+    .account-toggle:hover { background: var(--surface-soft); }
+    .account-toggle svg { width: 20px; height: 20px; }
     .account-panel { margin-bottom: 28px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    .account-panel[hidden] { display: none; }
     .account-form { display: grid; max-width: 560px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
     .account-form label { color: var(--muted); font-size: 12px; font-weight: 700; }
     .account-form input { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 5px; background: var(--page); color: var(--ink); }
@@ -184,10 +188,16 @@
     <header class="masthead" aria-label="Pasteboard">
       <span class="brand-mark" aria-hidden="true">P</span>
       <span class="brand-name">PASTEBOARD</span>
+      <button class="account-toggle" id="account-toggle" type="button" aria-label="Open account panel" aria-controls="account-panel" aria-expanded="false" title="Account">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <circle cx="12" cy="8" r="4"></circle>
+          <path d="M4 21a8 8 0 0 1 16 0"></path>
+        </svg>
+      </button>
     </header>
 
     <!-- Username sign-in and account requests; Supabase controls approval and access. -->
-    <section class="account-panel" aria-label="Account access">
+    <section class="account-panel" id="account-panel" aria-label="Account access" hidden>
       <form class="account-form" id="auth-form">
         <label for="account-username">Username</label>
         <label for="account-password">Password</label>
@@ -260,6 +270,8 @@
     const pasteList = document.querySelector("#paste-list");
     const feedStatus = document.querySelector("#feed-status");
     const boardContent = document.querySelector("#board-content");
+    const accountToggle = document.querySelector("#account-toggle");
+    const accountPanel = document.querySelector("#account-panel");
     const authForm = document.querySelector("#auth-form");
     const accountUsernameInput = document.querySelector("#account-username");
     const accountPasswordInput = document.querySelector("#account-password");
@@ -277,6 +289,28 @@
     let isApproved = false;
     let isSignUpMode = false;
     let refreshTimer = null;
+
+    // Let visitors open and close account tools without taking space by default.
+    accountToggle.addEventListener("click", () => {
+      const isOpening = accountPanel.hidden;
+      accountPanel.hidden = !isOpening;
+      accountToggle.setAttribute("aria-expanded", String(isOpening));
+      accountToggle.setAttribute("aria-label", isOpening ? "Close account panel" : "Open account panel");
+      accountToggle.title = isOpening ? "Close account panel" : "Account";
+      if (isOpening) {
+        (currentUserId ? authLogoutButton : accountUsernameInput).focus();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !accountPanel.hidden) {
+        accountPanel.hidden = true;
+        accountToggle.setAttribute("aria-expanded", "false");
+        accountToggle.setAttribute("aria-label", "Open account panel");
+        accountToggle.title = "Account";
+        accountToggle.focus();
+      }
+    });
 
     // The username becomes an internal, non-deliverable Supabase Auth email alias.
     function usernameToEmail(username) {
