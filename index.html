@@ -196,6 +196,7 @@
         <div class="account-actions">
           <button class="account-button" id="auth-submit" type="submit">Log in</button>
           <button class="account-button" id="auth-mode-toggle" type="button">Request an account</button>
+          <button class="account-button" id="auth-check-approval" type="button" hidden>Check approval</button>
           <button class="account-button" id="auth-logout" type="button" hidden>Log out</button>
           <p id="auth-status" role="status" aria-live="polite">Sign in or request an account. New accounts need admin approval.</p>
         </div>
@@ -203,6 +204,7 @@
       <section class="admin-tools" id="admin-tools" aria-labelledby="pending-title" hidden>
         <h2 id="pending-title">Pending account requests</h2>
         <p id="approval-status" role="status" aria-live="polite"></p>
+        <button class="account-button" id="refresh-approvals" type="button">Refresh requests</button>
         <ul class="pending-list" id="pending-list"></ul>
       </section>
     </section>
@@ -263,11 +265,13 @@
     const accountPasswordInput = document.querySelector("#account-password");
     const authSubmitButton = document.querySelector("#auth-submit");
     const authModeToggle = document.querySelector("#auth-mode-toggle");
+    const authCheckApprovalButton = document.querySelector("#auth-check-approval");
     const authLogoutButton = document.querySelector("#auth-logout");
     const authStatus = document.querySelector("#auth-status");
     const adminTools = document.querySelector("#admin-tools");
     const approvalStatus = document.querySelector("#approval-status");
     const pendingList = document.querySelector("#pending-list");
+    const refreshApprovalsButton = document.querySelector("#refresh-approvals");
     let currentUserId = null;
     let isAdmin = false;
     let isApproved = false;
@@ -286,6 +290,7 @@
       accountPasswordInput.disabled = signedIn;
       authSubmitButton.hidden = signedIn;
       authModeToggle.hidden = signedIn;
+      authCheckApprovalButton.hidden = !signedIn || isApproved || isAdmin;
       authLogoutButton.hidden = !signedIn;
       authSubmitButton.textContent = isSignUpMode ? "Request account" : "Log in";
       authModeToggle.textContent = isSignUpMode ? "Back to log in" : "Request an account";
@@ -575,6 +580,22 @@
         : "Sign in or request an account. New accounts need admin approval.";
       updateAuthControls();
     });
+
+    // Let a pending member recheck after the admin approves their account.
+    authCheckApprovalButton.addEventListener("click", async () => {
+      authCheckApprovalButton.disabled = true;
+      authStatus.textContent = "Checking approval...";
+      const { data, error } = await supabaseClient.auth.getUser();
+      if (error || !data.user) {
+        authStatus.textContent = "Could not check approval. Please sign in again.";
+        authCheckApprovalButton.disabled = false;
+        return;
+      }
+      await showAuthenticatedUser(data.user, accountUsernameInput.value);
+      authCheckApprovalButton.disabled = false;
+    });
+
+    refreshApprovalsButton.addEventListener("click", loadPendingUsers);
 
     // Signing out hides all protected data and actions immediately.
     authLogoutButton.addEventListener("click", async () => {
