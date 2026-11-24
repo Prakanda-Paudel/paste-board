@@ -55,8 +55,8 @@
       color: var(--ink);
     }
 
-    button, textarea, #paste-title { font: inherit; }
-    button:focus-visible, textarea:focus-visible, #paste-title:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    button, input, textarea { font: inherit; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 
     .page-shell { width: min(100% - 40px, 860px); margin: 0 auto; padding: 48px 0 72px; }
     .masthead { display: flex; align-items: center; gap: 12px; margin-bottom: 48px; }
@@ -72,15 +72,20 @@
       font-weight: 800;
     }
     .brand-name { font-size: 16px; font-weight: 750; letter-spacing: 0.02em; }
-    .admin-panel { margin-bottom: 28px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-    .admin-panel summary { width: fit-content; color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 700; }
-    .admin-form { display: grid; max-width: 560px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; padding-top: 14px; }
-    .admin-form label { color: var(--muted); font-size: 12px; font-weight: 700; }
-    .admin-form input { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); }
-    .admin-actions { display: flex; min-height: 40px; grid-column: 1 / -1; align-items: center; gap: 10px; }
-    .admin-button { min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 13px; font-weight: 700; }
-    .admin-button:disabled { cursor: wait; opacity: 0.6; }
-    #admin-status { margin: 0; color: var(--muted); font-size: 12px; }
+    .account-panel { margin-bottom: 28px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    .account-form { display: grid; max-width: 560px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+    .account-form label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .account-form input { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 5px; background: var(--page); color: var(--ink); }
+    .account-actions { display: flex; min-height: 40px; grid-column: 1 / -1; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .account-button { min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 13px; font-weight: 700; }
+    .account-button:disabled { cursor: wait; opacity: 0.6; }
+    #auth-status, #approval-status { margin: 0; color: var(--muted); font-size: 12px; }
+    .admin-tools { max-width: 560px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .admin-tools h2 { margin: 0 0 8px; font-size: 16px; }
+    .pending-list { margin: 12px 0 0; padding: 0; list-style: none; }
+    .pending-user { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+    .pending-user-name { min-width: 0; overflow-wrap: anywhere; font-weight: 700; }
+    .pending-user-time { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 400; }
     .intro { margin-bottom: 28px; }
     h1 { margin: 0; font-size: clamp(30px, 5vw, 42px); line-height: 1.12; letter-spacing: 0; }
     .intro p { margin: 10px 0 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
@@ -163,7 +168,8 @@
     @media (max-width: 560px) {
       .page-shell { width: min(100% - 28px, 860px); padding-top: 26px; }
       .masthead { margin-bottom: 38px; }
-      .admin-form { grid-template-columns: 1fr; }
+      .account-panel { padding: 13px; }
+      .account-form { grid-template-columns: 1fr; }
       .composer { padding: 13px; }
       #paste-input { min-height: 170px; padding: 12px; }
       .composer-footer { align-items: flex-start; }
@@ -180,27 +186,33 @@
       <span class="brand-name">PASTEBOARD</span>
     </header>
 
-    <!-- The visible admin ID is only a label; Supabase Auth and RLS enforce access. -->
-    <details class="admin-panel" id="admin-panel">
-      <summary id="admin-summary">Admin sign-in</summary>
-      <form class="admin-form" id="admin-form">
-        <label for="admin-id">Admin ID</label>
-        <label for="admin-password">Password</label>
-        <input id="admin-id" name="admin-id" type="text" value="prakanda" autocomplete="username" required>
-        <input id="admin-password" name="password" type="password" autocomplete="current-password" required>
-        <div class="admin-actions">
-          <button class="admin-button" id="admin-login-button" type="submit">Log in</button>
-          <button class="admin-button" id="admin-logout-button" type="button" hidden>Log out</button>
-          <p id="admin-status" role="status" aria-live="polite"></p>
+    <!-- Username sign-in and account requests; Supabase controls approval and access. -->
+    <section class="account-panel" aria-label="Account access">
+      <form class="account-form" id="auth-form">
+        <label for="account-username">Username</label>
+        <label for="account-password">Password</label>
+        <input id="account-username" name="username" type="text" maxlength="24" autocomplete="username" required>
+        <input id="account-password" name="password" type="password" autocomplete="current-password" required>
+        <div class="account-actions">
+          <button class="account-button" id="auth-submit" type="submit">Log in</button>
+          <button class="account-button" id="auth-mode-toggle" type="button">Request an account</button>
+          <button class="account-button" id="auth-logout" type="button" hidden>Log out</button>
+          <p id="auth-status" role="status" aria-live="polite">Sign in or request an account. New accounts need admin approval.</p>
         </div>
       </form>
-    </details>
+      <section class="admin-tools" id="admin-tools" aria-labelledby="pending-title" hidden>
+        <h2 id="pending-title">Pending account requests</h2>
+        <p id="approval-status" role="status" aria-live="polite"></p>
+        <ul class="pending-list" id="pending-list"></ul>
+      </section>
+    </section>
 
     <section class="intro" aria-labelledby="page-title">
       <h1 id="page-title">A place for your paste.</h1>
       <p>Drop in a snippet, share it with your people, and keep moving.</p>
     </section>
 
+    <div id="board-content" hidden>
     <!-- The form collects a paste and submits it without reloading the page. -->
     <form class="composer" id="paste-form">
       <label class="composer-label" for="paste-title">Title</label>
@@ -208,7 +220,7 @@
       <label class="composer-label" for="paste-input">Your text or code</label>
       <textarea id="paste-input" name="content" placeholder="Paste something here..." required spellcheck="false" aria-describedby="share-hint"></textarea>
       <div class="composer-footer">
-        <p class="hint" id="share-hint">Shared pastes are visible to anyone with this page.</p>
+        <p class="hint" id="share-hint">Only approved accounts can read or share pastes.</p>
         <button class="share-button" id="share-button" type="submit">Share paste</button>
       </div>
     </form>
@@ -221,6 +233,7 @@
       </div>
       <div class="paste-list" id="paste-list" aria-live="polite"></div>
     </section>
+    </div>
   </main>
 
   <!-- Pinned CDN version keeps this no-build page on a known supabase-js release. -->
@@ -231,6 +244,7 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsdHF6eHNwcm9sYXhnY3FnYmp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1MDA0OTgsImV4cCI6MjExMTA3NjQ5OH0.jkWaL0YQtI8prGCotROxiYU_x7BrMVD05oQljTVrPuU";
     const ADMIN_ID = "prakanda";
     const ADMIN_EMAIL = "335849874+prakanda-paudel@users.noreply.github.com";
+    const ACCOUNT_EMAIL_DOMAIN = "pasteboard.invalid";
 
     // Only create the client after both placeholders have been replaced.
     const isConfigured = SUPABASE_URL.startsWith("https://") && !SUPABASE_ANON_KEY.startsWith("YOUR_");
@@ -243,23 +257,42 @@
     const shareButton = document.querySelector("#share-button");
     const pasteList = document.querySelector("#paste-list");
     const feedStatus = document.querySelector("#feed-status");
-    const adminForm = document.querySelector("#admin-form");
-    const adminIdInput = document.querySelector("#admin-id");
-    const adminPasswordInput = document.querySelector("#admin-password");
-    const adminLoginButton = document.querySelector("#admin-login-button");
-    const adminLogoutButton = document.querySelector("#admin-logout-button");
-    const adminStatus = document.querySelector("#admin-status");
-    const adminSummary = document.querySelector("#admin-summary");
+    const boardContent = document.querySelector("#board-content");
+    const authForm = document.querySelector("#auth-form");
+    const accountUsernameInput = document.querySelector("#account-username");
+    const accountPasswordInput = document.querySelector("#account-password");
+    const authSubmitButton = document.querySelector("#auth-submit");
+    const authModeToggle = document.querySelector("#auth-mode-toggle");
+    const authLogoutButton = document.querySelector("#auth-logout");
+    const authStatus = document.querySelector("#auth-status");
+    const adminTools = document.querySelector("#admin-tools");
+    const approvalStatus = document.querySelector("#approval-status");
+    const pendingList = document.querySelector("#pending-list");
     let currentUserId = null;
     let isAdmin = false;
+    let isApproved = false;
+    let isSignUpMode = false;
+    let refreshTimer = null;
 
-    // Keep the small admin panel in sync with the authenticated role.
-    function updateAdminControls() {
-      adminLoginButton.hidden = isAdmin;
-      adminLogoutButton.hidden = !isAdmin;
-      adminIdInput.disabled = isAdmin;
-      adminPasswordInput.disabled = isAdmin;
-      adminSummary.textContent = isAdmin ? "Admin: prakanda (signed in)" : "Admin sign-in";
+    // The username becomes an internal, non-deliverable Supabase Auth email alias.
+    function usernameToEmail(username) {
+      return username === ADMIN_ID ? ADMIN_EMAIL : `${username}@${ACCOUNT_EMAIL_DOMAIN}`;
+    }
+
+    // Keep account controls and protected board content in the correct access state.
+    function updateAuthControls() {
+      const signedIn = Boolean(currentUserId);
+      accountUsernameInput.disabled = signedIn;
+      accountPasswordInput.disabled = signedIn;
+      authSubmitButton.hidden = signedIn;
+      authModeToggle.hidden = signedIn;
+      authLogoutButton.hidden = !signedIn;
+      authSubmitButton.textContent = isSignUpMode ? "Request account" : "Log in";
+      authModeToggle.textContent = isSignUpMode ? "Back to log in" : "Request an account";
+      accountPasswordInput.autocomplete = isSignUpMode ? "new-password" : "current-password";
+      adminTools.hidden = !isAdmin;
+      boardContent.hidden = !(isAdmin || isApproved);
+      shareButton.disabled = !(isAdmin || isApproved);
     }
 
     // This small icon is built with DOM methods so paste content is never interpreted as HTML.
@@ -282,20 +315,9 @@
       return icon;
     }
 
-    // Reuse the saved anonymous session, or create one so each browser owns its posts.
-    async function ensureAnonymousSession() {
-      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-      if (sessionError) throw sessionError;
-      if (sessionData.session) return sessionData.session.user.id;
-
-      const { data, error } = await supabaseClient.auth.signInAnonymously();
-      if (error) throw error;
-      return data.user.id;
-    }
-
     // Fetch the complete feed in newest-first order and safely rebuild its visible entries.
     async function loadPastes() {
-      if (!supabaseClient || !currentUserId) return;
+      if (!supabaseClient || !currentUserId || (!isApproved && !isAdmin)) return;
       feedStatus.textContent = "Refreshing...";
       const { data, error } = await supabaseClient
         .from("pastes")
@@ -381,7 +403,7 @@
           if (!isAdmin) deleteQuery = deleteQuery.eq("owner_id", currentUserId);
           const { data: deletedRows, error } = await deleteQuery.select("id");
 
-          if (error || deletedRows.length === 0) {
+          if (error || !deletedRows || deletedRows.length === 0) {
             feedStatus.textContent = "Could not delete paste. Please try again.";
             deleteButton.disabled = false;
             deleteButton.textContent = "Delete";
@@ -400,76 +422,184 @@
       return article;
     }
 
-    // Verify admin status with a database function; the ID field alone grants nothing.
+    // The database decides admin and approval status; browser-supplied usernames grant nothing.
     async function checkAdminRole() {
       const { data, error } = await supabaseClient.rpc("is_pasteboard_admin");
       if (error) return false;
       return data === true;
     }
 
-    // Sign in the configured admin email and require its server-side admin role.
-    adminForm.addEventListener("submit", async (event) => {
+    async function checkApprovalStatus() {
+      const { data, error } = await supabaseClient.rpc("is_pasteboard_approved");
+      if (error) return false;
+      return data === true;
+    }
+
+    async function loadPendingUsers() {
+      if (!isAdmin) return;
+      approvalStatus.textContent = "Loading requests...";
+      const { data, error } = await supabaseClient.rpc("get_pending_pasteboard_users");
+      if (error) {
+        approvalStatus.textContent = "Could not load approval requests.";
+        return;
+      }
+
+      pendingList.replaceChildren();
+      if (data.length === 0) {
+        approvalStatus.textContent = "No pending requests.";
+        return;
+      }
+
+      approvalStatus.textContent = `${data.length} request${data.length === 1 ? "" : "s"} waiting.`;
+      data.forEach((member) => {
+        const row = document.createElement("li");
+        row.className = "pending-user";
+        const details = document.createElement("div");
+        const username = document.createElement("span");
+        username.className = "pending-user-name";
+        username.textContent = member.username;
+        const created = document.createElement("time");
+        created.className = "pending-user-time";
+        created.dateTime = member.created_at;
+        created.textContent = new Date(member.created_at).toLocaleString();
+        const approveButton = document.createElement("button");
+        approveButton.className = "account-button";
+        approveButton.type = "button";
+        approveButton.textContent = "Approve";
+        approveButton.addEventListener("click", async () => {
+          approveButton.disabled = true;
+          approveButton.textContent = "Approving...";
+          const { error: approveError } = await supabaseClient.rpc("approve_pasteboard_user", {
+            target_user_id: member.user_id
+          });
+          if (approveError) {
+            approvalStatus.textContent = "Could not approve this account.";
+            approveButton.disabled = false;
+            approveButton.textContent = "Approve";
+            return;
+          }
+          await loadPendingUsers();
+        });
+        details.append(username, created);
+        row.append(details, approveButton);
+        pendingList.append(row);
+      });
+    }
+
+    async function showAuthenticatedUser(user, requestedUsername = "") {
+      currentUserId = user.id;
+      isAdmin = await checkAdminRole();
+      isApproved = isAdmin || await checkApprovalStatus();
+      accountUsernameInput.value = isAdmin
+        ? ADMIN_ID
+        : (user.user_metadata?.username || requestedUsername);
+      accountPasswordInput.value = "";
+      updateAuthControls();
+
+      if (!isApproved) {
+        pasteList.replaceChildren();
+        feedStatus.textContent = "Approval required";
+        authStatus.textContent = "Account request received. You can use the board after the admin approves it.";
+        return;
+      }
+
+      authStatus.textContent = isAdmin ? "Admin signed in." : "Account approved. You are signed in.";
+      await loadPastes();
+      if (isAdmin) await loadPendingUsers();
+      if (!refreshTimer) refreshTimer = window.setInterval(loadPastes, 10000);
+    }
+
+    // New members use a username-only alias; only an admin-approved account can access the board.
+    authForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!supabaseClient) return;
-      if (adminIdInput.value.trim().toLowerCase() !== ADMIN_ID) {
-        adminStatus.textContent = "Invalid admin ID or password.";
+      const username = accountUsernameInput.value.trim().toLowerCase();
+      const password = accountPasswordInput.value;
+      if (!/^[a-z0-9_]{3,24}$/.test(username)) {
+        authStatus.textContent = "Use 3–24 letters, numbers, or underscores for your username.";
+        return;
+      }
+      if (isSignUpMode && username === ADMIN_ID) {
+        authStatus.textContent = "That username is reserved.";
+        return;
+      }
+      if (isSignUpMode && password.length < 8) {
+        authStatus.textContent = "Choose a password with at least 8 characters.";
         return;
       }
 
-      adminLoginButton.disabled = true;
-      adminStatus.textContent = "Signing in...";
-      const password = adminPasswordInput.value;
-      adminPasswordInput.value = "";
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: ADMIN_EMAIL,
-        password
-      });
+      authSubmitButton.disabled = true;
+      authStatus.textContent = isSignUpMode ? "Submitting account request..." : "Signing in...";
+      const email = usernameToEmail(username);
+      if (isSignUpMode) {
+        const { data, error } = await supabaseClient.auth.signUp({
+          email,
+          password,
+          options: { data: { username } }
+        });
+        accountPasswordInput.value = "";
+        if (error) {
+          authStatus.textContent = "Could not create account. That username may already be in use.";
+          authSubmitButton.disabled = false;
+          return;
+        }
+        if (!data.session) {
+          authStatus.textContent = "Account request created. Log in after the account is ready.";
+          authSubmitButton.disabled = false;
+          return;
+        }
+        await showAuthenticatedUser(data.user, username);
+        authSubmitButton.disabled = false;
+        return;
+      }
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      accountPasswordInput.value = "";
 
       if (error) {
-        adminStatus.textContent = "Sign-in failed. Check the ID and password.";
-        adminLoginButton.disabled = false;
+        authStatus.textContent = "Sign-in failed. Check the username and password.";
+        authSubmitButton.disabled = false;
         return;
       }
 
-      currentUserId = data.user.id;
-      isAdmin = await checkAdminRole();
-      if (!isAdmin) {
-        await supabaseClient.auth.signOut();
-        currentUserId = await ensureAnonymousSession();
-        adminStatus.textContent = "This account is not an administrator.";
-        updateAdminControls();
-        adminLoginButton.disabled = false;
-        await loadPastes();
-        return;
-      }
-
-      adminStatus.textContent = "Admin session active.";
-      updateAdminControls();
-      adminLoginButton.disabled = false;
-      await loadPastes();
+      await showAuthenticatedUser(data.user, username);
+      authSubmitButton.disabled = false;
     });
 
-    // Sign out the administrator and return to this browser's anonymous author session.
-    adminLogoutButton.addEventListener("click", async () => {
-      adminLogoutButton.disabled = true;
+    // Switch between signing in and requesting a new account.
+    authModeToggle.addEventListener("click", () => {
+      isSignUpMode = !isSignUpMode;
+      accountPasswordInput.value = "";
+      authStatus.textContent = isSignUpMode
+        ? "New accounts cannot read or post until the admin approves them."
+        : "Sign in or request an account. New accounts need admin approval.";
+      updateAuthControls();
+    });
+
+    // Signing out hides all protected data and actions immediately.
+    authLogoutButton.addEventListener("click", async () => {
+      authLogoutButton.disabled = true;
       const { error } = await supabaseClient.auth.signOut();
       if (error) {
-        adminStatus.textContent = "Could not sign out. Please try again.";
-        adminLogoutButton.disabled = false;
+        authStatus.textContent = "Could not sign out. Please try again.";
+        authLogoutButton.disabled = false;
         return;
       }
-      currentUserId = await ensureAnonymousSession();
+      currentUserId = null;
       isAdmin = false;
-      updateAdminControls();
-      adminStatus.textContent = "Signed out of admin mode.";
-      adminLogoutButton.disabled = false;
-      await loadPastes();
+      isApproved = false;
+      isSignUpMode = false;
+      pasteList.replaceChildren();
+      feedStatus.textContent = "Sign in required";
+      authStatus.textContent = "Signed out. Sign in or request an account.";
+      updateAuthControls();
+      authLogoutButton.disabled = false;
     });
 
     // Insert the original text, then clear the composer only after a successful save.
     pasteForm.addEventListener("submit", async (event) => {
       event.preventDefault();
-      if (!supabaseClient || !currentUserId) return;
+      if (!supabaseClient || !currentUserId || (!isApproved && !isAdmin)) return;
       const title = pasteTitleInput.value.trim();
       const content = pasteInput.value;
       if (!title || !content.trim()) return;
@@ -491,30 +621,30 @@
       shareButton.textContent = "Share paste";
     });
 
-    // Start the board only after Supabase has restored or created this browser's session.
+    // Restore a saved login, but never create an anonymous account.
     if (supabaseClient) {
       shareButton.disabled = true;
-      ensureAnonymousSession().then(async (userId) => {
-        currentUserId = userId;
-        isAdmin = await checkAdminRole();
-        updateAdminControls();
-        shareButton.disabled = false;
-        await loadPastes();
-        window.setInterval(loadPastes, 10000);
+      boardContent.hidden = true;
+      supabaseClient.auth.getSession().then(async ({ data, error }) => {
+        if (error) throw error;
+        if (!data.session) {
+          currentUserId = null;
+          isAdmin = false;
+          isApproved = false;
+          updateAuthControls();
+          feedStatus.textContent = "Sign in required";
+          return;
+        }
+        await showAuthenticatedUser(data.session.user);
       }).catch(() => {
-        feedStatus.textContent = "Could not start paste board";
-        const authMessage = document.createElement("p");
-        authMessage.className = "empty-state";
-        authMessage.textContent = "Could not create an anonymous session. Check Supabase anonymous sign-in settings and reload.";
-        pasteList.replaceChildren(authMessage);
+        authStatus.textContent = "Could not connect to sign-in. Please reload and try again.";
+        feedStatus.textContent = "Sign in unavailable";
       });
     } else {
       shareButton.disabled = true;
+      boardContent.hidden = true;
       feedStatus.textContent = "Setup required";
-      const setupMessage = document.createElement("p");
-      setupMessage.className = "empty-state";
-      setupMessage.textContent = "Add your Supabase project URL and anon key in the script to connect this board.";
-      pasteList.append(setupMessage);
+      authStatus.textContent = "Supabase setup is required before signing in.";
     }
   </script>
 </body>
