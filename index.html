@@ -18,6 +18,7 @@
       --accent: #136b50;
       --accent-hover: #0c5841;
       --accent-ink: #ffffff;
+      --danger: #a43b32;
       --focus: #e7aa3e;
       --shadow: 0 16px 38px rgb(34 55 44 / 8%);
       font-family: "Aptos", "Segoe UI", sans-serif;
@@ -37,6 +38,7 @@
         --accent: #79d3ac;
         --accent-hover: #9be4c2;
         --accent-ink: #10251b;
+        --danger: #f28275;
         --focus: #f0bf64;
         --shadow: 0 16px 38px rgb(0 0 0 / 18%);
       }
@@ -53,8 +55,8 @@
       color: var(--ink);
     }
 
-    button, textarea { font: inherit; }
-    button:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    button, textarea, #paste-title { font: inherit; }
+    button:focus-visible, textarea:focus-visible, #paste-title:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 
     .page-shell { width: min(100% - 40px, 860px); margin: 0 auto; padding: 48px 0 72px; }
     .masthead { display: flex; align-items: center; gap: 12px; margin-bottom: 48px; }
@@ -83,6 +85,18 @@
       animation: arrive 380ms ease-out both;
     }
     .composer-label { display: block; margin: 1px 2px 11px; font-size: 13px; font-weight: 700; }
+    #paste-title {
+      display: block;
+      width: 100%;
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--page);
+      color: var(--ink);
+      font-size: 15px;
+    }
+    #paste-title::placeholder { color: var(--muted); opacity: 0.8; }
     #paste-input {
       display: block;
       width: 100%;
@@ -123,9 +137,14 @@
     .paste-item { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); animation: arrive 260ms ease-out both; }
     .paste-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
     .paste-time { color: var(--muted); font-size: 12px; }
-    .copy-button { display: inline-flex; min-height: 34px; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; }
+    .paste-actions { display: flex; align-items: center; gap: 8px; }
+    .copy-button, .delete-button { display: inline-flex; min-height: 34px; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; }
     .copy-button:hover { background: var(--surface-soft); }
+    .delete-button { color: var(--danger); }
+    .delete-button:hover { background: var(--surface-soft); }
+    .copy-button:disabled, .delete-button:disabled { cursor: wait; opacity: 0.6; }
     .copy-button svg { width: 14px; height: 14px; }
+    .paste-title { margin: 0; padding: 16px 16px 0; font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
     .paste-content { overflow-x: auto; margin: 0; padding: 16px; color: var(--ink); font-family: "Cascadia Code", "Consolas", monospace; font-size: 13px; line-height: 1.65; tab-size: 2; white-space: pre-wrap; overflow-wrap: anywhere; }
     .empty-state { padding: 34px 18px; border: 1px dashed var(--line); border-radius: 7px; color: var(--muted); text-align: center; font-size: 14px; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
@@ -158,6 +177,8 @@
 
     <!-- The form collects a paste and submits it without reloading the page. -->
     <form class="composer" id="paste-form">
+      <label class="composer-label" for="paste-title">Title</label>
+      <input id="paste-title" name="title" type="text" maxlength="120" placeholder="Give this paste a title..." required>
       <label class="composer-label" for="paste-input">Your text or code</label>
       <textarea id="paste-input" name="content" placeholder="Paste something here..." required spellcheck="false" aria-describedby="share-hint"></textarea>
       <div class="composer-footer">
@@ -189,10 +210,12 @@
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
       : null;
     const pasteForm = document.querySelector("#paste-form");
+    const pasteTitleInput = document.querySelector("#paste-title");
     const pasteInput = document.querySelector("#paste-input");
     const shareButton = document.querySelector("#share-button");
     const pasteList = document.querySelector("#paste-list");
     const feedStatus = document.querySelector("#feed-status");
+    let currentUserId = null;
 
     // This small icon is built with DOM methods so paste content is never interpreted as HTML.
     function makeCopyIcon() {
@@ -214,13 +237,24 @@
       return icon;
     }
 
+    // Reuse the saved anonymous session, or create one so each browser owns its posts.
+    async function ensureAnonymousSession() {
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (sessionData.session) return sessionData.session.user.id;
+
+      const { data, error } = await supabaseClient.auth.signInAnonymously();
+      if (error) throw error;
+      return data.user.id;
+    }
+
     // Fetch the complete feed in newest-first order and safely rebuild its visible entries.
     async function loadPastes() {
-      if (!supabaseClient) return;
+      if (!supabaseClient || !currentUserId) return;
       feedStatus.textContent = "Refreshing...";
       const { data, error } = await supabaseClient
         .from("pastes")
-        .select("id, content, created_at")
+        .select("id, title, content, created_at, owner_id")
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -258,6 +292,8 @@
       timestamp.dateTime = paste.created_at;
       timestamp.textContent = new Date(paste.created_at).toLocaleString();
 
+      const actions = document.createElement("div");
+      actions.className = "paste-actions";
       const copyButton = document.createElement("button");
       copyButton.className = "copy-button";
       copyButton.type = "button";
@@ -280,24 +316,61 @@
       const content = document.createElement("pre");
       content.className = "paste-content";
       content.textContent = paste.content;
-      metadata.append(timestamp, copyButton);
-      article.append(metadata, content);
+      actions.append(copyButton);
+
+      if (paste.owner_id === currentUserId) {
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "delete-button";
+        deleteButton.type = "button";
+        deleteButton.textContent = "Delete";
+        deleteButton.setAttribute("aria-label", `Delete ${paste.title}`);
+        deleteButton.addEventListener("click", async () => {
+          if (!window.confirm(`Delete "${paste.title}"? This cannot be undone.`)) return;
+
+          deleteButton.disabled = true;
+          deleteButton.textContent = "Deleting...";
+          const { error } = await supabaseClient
+            .from("pastes")
+            .delete()
+            .eq("id", paste.id)
+            .eq("owner_id", currentUserId);
+
+          if (error) {
+            feedStatus.textContent = "Could not delete paste. Please try again.";
+            deleteButton.disabled = false;
+            deleteButton.textContent = "Delete";
+            return;
+          }
+          await loadPastes();
+        });
+        actions.append(deleteButton);
+      }
+
+      const title = document.createElement("h3");
+      title.className = "paste-title";
+      title.textContent = paste.title || "Untitled paste";
+      metadata.append(timestamp, actions);
+      article.append(metadata, title, content);
       return article;
     }
 
     // Insert the original text, then clear the composer only after a successful save.
     pasteForm.addEventListener("submit", async (event) => {
       event.preventDefault();
-      if (!supabaseClient) return;
+      if (!supabaseClient || !currentUserId) return;
+      const title = pasteTitleInput.value.trim();
       const content = pasteInput.value;
-      if (!content.trim()) return;
+      if (!title || !content.trim()) return;
 
       shareButton.disabled = true;
       shareButton.textContent = "Sharing...";
-      const { error } = await supabaseClient.from("pastes").insert({ content });
+      const { error } = await supabaseClient
+        .from("pastes")
+        .insert({ title, content, owner_id: currentUserId });
       if (error) {
         feedStatus.textContent = "Could not share paste. Please try again.";
       } else {
+        pasteTitleInput.value = "";
         pasteInput.value = "";
         feedStatus.textContent = "Paste shared";
         await loadPastes();
@@ -306,10 +379,21 @@
       shareButton.textContent = "Share paste";
     });
 
-    // Explain the setup requirement until the project URL and anon key are filled in.
+    // Start the board only after Supabase has restored or created this browser's session.
     if (supabaseClient) {
-      loadPastes();
-      window.setInterval(loadPastes, 10000);
+      shareButton.disabled = true;
+      ensureAnonymousSession().then(async (userId) => {
+        currentUserId = userId;
+        shareButton.disabled = false;
+        await loadPastes();
+        window.setInterval(loadPastes, 10000);
+      }).catch(() => {
+        feedStatus.textContent = "Could not start paste board";
+        const authMessage = document.createElement("p");
+        authMessage.className = "empty-state";
+        authMessage.textContent = "Could not create an anonymous session. Check Supabase anonymous sign-in settings and reload.";
+        pasteList.replaceChildren(authMessage);
+      });
     } else {
       shareButton.disabled = true;
       feedStatus.textContent = "Setup required";
