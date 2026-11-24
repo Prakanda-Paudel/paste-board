@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f5f2">
+  <title>Pasteboard | Share text simply</title>
+  <style>
+    /* Keep the palette and sizing in one place so the design is easy to adjust. */
+    :root {
+      color-scheme: light dark;
+      --page: #f3f5f2;
+      --surface: #ffffff;
+      --surface-soft: #e9eee9;
+      --ink: #17241f;
+      --muted: #64736b;
+      --line: #d7dfd9;
+      --accent: #136b50;
+      --accent-hover: #0c5841;
+      --accent-ink: #ffffff;
+      --focus: #e7aa3e;
+      --shadow: 0 16px 38px rgb(34 55 44 / 8%);
+      font-family: "Aptos", "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* Follow the visitor's operating-system appearance preference. */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page: #111815;
+        --surface: #1b2420;
+        --surface-soft: #242f29;
+        --ink: #eef4ef;
+        --muted: #a4b2a9;
+        --line: #35433b;
+        --accent: #79d3ac;
+        --accent-hover: #9be4c2;
+        --accent-ink: #10251b;
+        --focus: #f0bf64;
+        --shadow: 0 16px 38px rgb(0 0 0 / 18%);
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      background-color: var(--page);
+      background-image: radial-gradient(ellipse at 12% 0%, rgb(91 157 118 / 10%), transparent 37%);
+      color: var(--ink);
+    }
+
+    button, textarea { font: inherit; }
+    button:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+    .page-shell { width: min(100% - 40px, 860px); margin: 0 auto; padding: 48px 0 72px; }
+    .masthead { display: flex; align-items: center; gap: 12px; margin-bottom: 48px; }
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border-radius: 11px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-size: 19px;
+      font-weight: 800;
+    }
+    .brand-name { font-size: 16px; font-weight: 750; letter-spacing: 0.02em; }
+    .intro { margin-bottom: 28px; }
+    h1 { margin: 0; font-size: clamp(30px, 5vw, 42px); line-height: 1.12; letter-spacing: 0; }
+    .intro p { margin: 10px 0 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
+
+    .composer {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      animation: arrive 380ms ease-out both;
+    }
+    .composer-label { display: block; margin: 1px 2px 11px; font-size: 13px; font-weight: 700; }
+    #paste-input {
+      display: block;
+      width: 100%;
+      min-height: 190px;
+      resize: vertical;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--page);
+      color: var(--ink);
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      tab-size: 2;
+    }
+    #paste-input::placeholder { color: var(--muted); opacity: 0.8; }
+    .composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 2px 1px; }
+    .hint { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
+    .share-button {
+      min-height: 44px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 5px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 750;
+      transition: background-color 140ms ease, transform 140ms ease;
+    }
+    .share-button:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-1px); }
+    .share-button:disabled { cursor: wait; opacity: 0.65; }
+
+    .feed-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 42px 2px 15px; }
+    .feed-heading h2 { margin: 0; font-size: 19px; line-height: 1.3; }
+    #feed-status { margin: 0; color: var(--muted); font-size: 12px; text-align: right; }
+    .paste-list { display: grid; gap: 12px; }
+    .paste-item { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); animation: arrive 260ms ease-out both; }
+    .paste-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+    .paste-time { color: var(--muted); font-size: 12px; }
+    .copy-button { display: inline-flex; min-height: 34px; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; }
+    .copy-button:hover { background: var(--surface-soft); }
+    .copy-button svg { width: 14px; height: 14px; }
+    .paste-content { overflow-x: auto; margin: 0; padding: 16px; color: var(--ink); font-family: "Cascadia Code", "Consolas", monospace; font-size: 13px; line-height: 1.65; tab-size: 2; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .empty-state { padding: 34px 18px; border: 1px dashed var(--line); border-radius: 7px; color: var(--muted); text-align: center; font-size: 14px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+    @keyframes arrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
+    @media (max-width: 560px) {
+      .page-shell { width: min(100% - 28px, 860px); padding-top: 26px; }
+      .masthead { margin-bottom: 38px; }
+      .composer { padding: 13px; }
+      #paste-input { min-height: 170px; padding: 12px; }
+      .composer-footer { align-items: flex-start; }
+      .hint { max-width: 190px; padding-top: 3px; }
+      .share-button { padding: 0 16px; }
+      .feed-heading { margin-top: 34px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="masthead" aria-label="Pasteboard">
+      <span class="brand-mark" aria-hidden="true">P</span>
+      <span class="brand-name">PASTEBOARD</span>
+    </header>
+
+    <section class="intro" aria-labelledby="page-title">
+      <h1 id="page-title">A place for your paste.</h1>
+      <p>Drop in a snippet, share it with your people, and keep moving.</p>
+    </section>
+
+    <!-- The form collects a paste and submits it without reloading the page. -->
+    <form class="composer" id="paste-form">
+      <label class="composer-label" for="paste-input">Your text or code</label>
+      <textarea id="paste-input" name="content" placeholder="Paste something here..." required spellcheck="false" aria-describedby="share-hint"></textarea>
+      <div class="composer-footer">
+        <p class="hint" id="share-hint">Shared pastes are visible to anyone with this page.</p>
+        <button class="share-button" id="share-button" type="submit">Share paste</button>
+      </div>
+    </form>
+
+    <!-- New pastes are added here by JavaScript using safe text nodes. -->
+    <section aria-labelledby="feed-title">
+      <div class="feed-heading">
+        <h2 id="feed-title">Recent pastes</h2>
+        <p id="feed-status" role="status" aria-live="polite">Connecting...</p>
+      </div>
+      <div class="paste-list" id="paste-list" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <!-- Pinned CDN version keeps this no-build page on a known supabase-js release. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.js"></script>
+  <script>
+    // Replace these placeholders with the values from your Supabase project's API settings.
+    const SUPABASE_URL = "YOUR_SUPABASE_URL";
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+
+    // Only create the client after both placeholders have been replaced.
+    const isConfigured = SUPABASE_URL.startsWith("https://") && !SUPABASE_ANON_KEY.startsWith("YOUR_");
+    const supabaseClient = isConfigured
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+    const pasteForm = document.querySelector("#paste-form");
+    const pasteInput = document.querySelector("#paste-input");
+    const shareButton = document.querySelector("#share-button");
+    const pasteList = document.querySelector("#paste-list");
+    const feedStatus = document.querySelector("#feed-status");
+
+    // This small icon is built with DOM methods so paste content is never interpreted as HTML.
+    function makeCopyIcon() {
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      icon.setAttribute("viewBox", "0 0 24 24");
+      icon.setAttribute("fill", "none");
+      icon.setAttribute("stroke", "currentColor");
+      icon.setAttribute("stroke-width", "1.8");
+      icon.setAttribute("aria-hidden", "true");
+      const back = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      back.setAttribute("x", "8");
+      back.setAttribute("y", "8");
+      back.setAttribute("width", "12");
+      back.setAttribute("height", "12");
+      back.setAttribute("rx", "2");
+      const front = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      front.setAttribute("d", "M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3");
+      icon.append(back, front);
+      return icon;
+    }
+
+    // Fetch the complete feed in newest-first order and safely rebuild its visible entries.
+    async function loadPastes() {
+      if (!supabaseClient) return;
+      feedStatus.textContent = "Refreshing...";
+      const { data, error } = await supabaseClient
+        .from("pastes")
+        .select("id, content, created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        feedStatus.textContent = "Could not load pastes";
+        if (pasteList.childElementCount === 0) {
+          const errorMessage = document.createElement("p");
+          errorMessage.className = "empty-state";
+          errorMessage.textContent = "Could not connect to the paste board. Check your Supabase settings and try again.";
+          pasteList.replaceChildren(errorMessage);
+        }
+        return;
+      }
+
+      pasteList.replaceChildren();
+      if (data.length === 0) {
+        const emptyMessage = document.createElement("p");
+        emptyMessage.className = "empty-state";
+        emptyMessage.textContent = "Nothing here yet. Share the first paste.";
+        pasteList.append(emptyMessage);
+      } else {
+        data.forEach((paste) => pasteList.append(createPasteElement(paste)));
+      }
+      feedStatus.textContent = "Updates every 10 seconds";
+    }
+
+    // Create one paste row. All user-provided content is assigned through textContent.
+    function createPasteElement(paste) {
+      const article = document.createElement("article");
+      article.className = "paste-item";
+
+      const metadata = document.createElement("div");
+      metadata.className = "paste-meta";
+      const timestamp = document.createElement("time");
+      timestamp.className = "paste-time";
+      timestamp.dateTime = paste.created_at;
+      timestamp.textContent = new Date(paste.created_at).toLocaleString();
+
+      const copyButton = document.createElement("button");
+      copyButton.className = "copy-button";
+      copyButton.type = "button";
+      copyButton.setAttribute("aria-label", "Copy paste to clipboard");
+      copyButton.append(makeCopyIcon());
+      const copyLabel = document.createElement("span");
+      copyLabel.textContent = "Copy";
+      copyButton.append(copyLabel);
+      copyButton.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(paste.content);
+          copyLabel.textContent = "Copied";
+          window.setTimeout(() => { copyLabel.textContent = "Copy"; }, 1500);
+        } catch (error) {
+          copyLabel.textContent = "Copy failed";
+          window.setTimeout(() => { copyLabel.textContent = "Copy"; }, 2000);
+        }
+      });
+
+      const content = document.createElement("pre");
+      content.className = "paste-content";
+      content.textContent = paste.content;
+      metadata.append(timestamp, copyButton);
+      article.append(metadata, content);
+      return article;
+    }
+
+    // Insert the original text, then clear the composer only after a successful save.
+    pasteForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!supabaseClient) return;
+      const content = pasteInput.value;
+      if (!content.trim()) return;
+
+      shareButton.disabled = true;
+      shareButton.textContent = "Sharing...";
+      const { error } = await supabaseClient.from("pastes").insert({ content });
+      if (error) {
+        feedStatus.textContent = "Could not share paste. Please try again.";
+      } else {
+        pasteInput.value = "";
+        feedStatus.textContent = "Paste shared";
+        await loadPastes();
+      }
+      shareButton.disabled = false;
+      shareButton.textContent = "Share paste";
+    });
+
+    // Explain the setup requirement until the project URL and anon key are filled in.
+    if (supabaseClient) {
+      loadPastes();
+      window.setInterval(loadPastes, 10000);
+    } else {
+      shareButton.disabled = true;
+      feedStatus.textContent = "Setup required";
+      const setupMessage = document.createElement("p");
+      setupMessage.className = "empty-state";
+      setupMessage.textContent = "Add your Supabase project URL and anon key in the script to connect this board.";
+      pasteList.append(setupMessage);
+    }
+  </script>
+</body>
+</html>
