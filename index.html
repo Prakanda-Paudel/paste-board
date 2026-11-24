@@ -72,6 +72,15 @@
       font-weight: 800;
     }
     .brand-name { font-size: 16px; font-weight: 750; letter-spacing: 0.02em; }
+    .admin-panel { margin-bottom: 28px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+    .admin-panel summary { width: fit-content; color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 700; }
+    .admin-form { display: grid; max-width: 560px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; padding-top: 14px; }
+    .admin-form label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .admin-form input { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); }
+    .admin-actions { display: flex; min-height: 40px; grid-column: 1 / -1; align-items: center; gap: 10px; }
+    .admin-button { min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 13px; font-weight: 700; }
+    .admin-button:disabled { cursor: wait; opacity: 0.6; }
+    #admin-status { margin: 0; color: var(--muted); font-size: 12px; }
     .intro { margin-bottom: 28px; }
     h1 { margin: 0; font-size: clamp(30px, 5vw, 42px); line-height: 1.12; letter-spacing: 0; }
     .intro p { margin: 10px 0 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
@@ -154,6 +163,7 @@
     @media (max-width: 560px) {
       .page-shell { width: min(100% - 28px, 860px); padding-top: 26px; }
       .masthead { margin-bottom: 38px; }
+      .admin-form { grid-template-columns: 1fr; }
       .composer { padding: 13px; }
       #paste-input { min-height: 170px; padding: 12px; }
       .composer-footer { align-items: flex-start; }
@@ -169,6 +179,22 @@
       <span class="brand-mark" aria-hidden="true">P</span>
       <span class="brand-name">PASTEBOARD</span>
     </header>
+
+    <!-- The visible admin ID is only a label; Supabase Auth and RLS enforce access. -->
+    <details class="admin-panel" id="admin-panel">
+      <summary id="admin-summary">Admin sign-in</summary>
+      <form class="admin-form" id="admin-form">
+        <label for="admin-id">Admin ID</label>
+        <label for="admin-password">Password</label>
+        <input id="admin-id" name="admin-id" type="text" value="prakanda" autocomplete="username" required>
+        <input id="admin-password" name="password" type="password" autocomplete="current-password" required>
+        <div class="admin-actions">
+          <button class="admin-button" id="admin-login-button" type="submit">Log in</button>
+          <button class="admin-button" id="admin-logout-button" type="button" hidden>Log out</button>
+          <p id="admin-status" role="status" aria-live="polite"></p>
+        </div>
+      </form>
+    </details>
 
     <section class="intro" aria-labelledby="page-title">
       <h1 id="page-title">A place for your paste.</h1>
@@ -203,6 +229,8 @@
     // Replace these placeholders with the values from your Supabase project's API settings.
     const SUPABASE_URL = "https://sltqzxsprolaxgcqgbjx.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsdHF6eHNwcm9sYXhnY3FnYmp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1MDA0OTgsImV4cCI6MjExMTA3NjQ5OH0.jkWaL0YQtI8prGCotROxiYU_x7BrMVD05oQljTVrPuU";
+    const ADMIN_ID = "prakanda";
+    const ADMIN_EMAIL = "335849874+prakanda-paudel@users.noreply.github.com";
 
     // Only create the client after both placeholders have been replaced.
     const isConfigured = SUPABASE_URL.startsWith("https://") && !SUPABASE_ANON_KEY.startsWith("YOUR_");
@@ -215,7 +243,24 @@
     const shareButton = document.querySelector("#share-button");
     const pasteList = document.querySelector("#paste-list");
     const feedStatus = document.querySelector("#feed-status");
+    const adminForm = document.querySelector("#admin-form");
+    const adminIdInput = document.querySelector("#admin-id");
+    const adminPasswordInput = document.querySelector("#admin-password");
+    const adminLoginButton = document.querySelector("#admin-login-button");
+    const adminLogoutButton = document.querySelector("#admin-logout-button");
+    const adminStatus = document.querySelector("#admin-status");
+    const adminSummary = document.querySelector("#admin-summary");
     let currentUserId = null;
+    let isAdmin = false;
+
+    // Keep the small admin panel in sync with the authenticated role.
+    function updateAdminControls() {
+      adminLoginButton.hidden = isAdmin;
+      adminLogoutButton.hidden = !isAdmin;
+      adminIdInput.disabled = isAdmin;
+      adminPasswordInput.disabled = isAdmin;
+      adminSummary.textContent = isAdmin ? "Admin: prakanda (signed in)" : "Admin sign-in";
+    }
 
     // This small icon is built with DOM methods so paste content is never interpreted as HTML.
     function makeCopyIcon() {
@@ -318,7 +363,7 @@
       content.textContent = paste.content;
       actions.append(copyButton);
 
-      if (paste.owner_id === currentUserId) {
+      if (isAdmin || paste.owner_id === currentUserId) {
         const deleteButton = document.createElement("button");
         deleteButton.className = "delete-button";
         deleteButton.type = "button";
@@ -329,13 +374,14 @@
 
           deleteButton.disabled = true;
           deleteButton.textContent = "Deleting...";
-          const { error } = await supabaseClient
+          let deleteQuery = supabaseClient
             .from("pastes")
             .delete()
-            .eq("id", paste.id)
-            .eq("owner_id", currentUserId);
+            .eq("id", paste.id);
+          if (!isAdmin) deleteQuery = deleteQuery.eq("owner_id", currentUserId);
+          const { data: deletedRows, error } = await deleteQuery.select("id");
 
-          if (error) {
+          if (error || deletedRows.length === 0) {
             feedStatus.textContent = "Could not delete paste. Please try again.";
             deleteButton.disabled = false;
             deleteButton.textContent = "Delete";
@@ -353,6 +399,72 @@
       article.append(metadata, title, content);
       return article;
     }
+
+    // Verify admin status with a database function; the ID field alone grants nothing.
+    async function checkAdminRole() {
+      const { data, error } = await supabaseClient.rpc("is_pasteboard_admin");
+      if (error) return false;
+      return data === true;
+    }
+
+    // Sign in the configured admin email and require its server-side admin role.
+    adminForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!supabaseClient) return;
+      if (adminIdInput.value.trim().toLowerCase() !== ADMIN_ID) {
+        adminStatus.textContent = "Invalid admin ID or password.";
+        return;
+      }
+
+      adminLoginButton.disabled = true;
+      adminStatus.textContent = "Signing in...";
+      const password = adminPasswordInput.value;
+      adminPasswordInput.value = "";
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: ADMIN_EMAIL,
+        password
+      });
+
+      if (error) {
+        adminStatus.textContent = "Sign-in failed. Check the ID and password.";
+        adminLoginButton.disabled = false;
+        return;
+      }
+
+      currentUserId = data.user.id;
+      isAdmin = await checkAdminRole();
+      if (!isAdmin) {
+        await supabaseClient.auth.signOut();
+        currentUserId = await ensureAnonymousSession();
+        adminStatus.textContent = "This account is not an administrator.";
+        updateAdminControls();
+        adminLoginButton.disabled = false;
+        await loadPastes();
+        return;
+      }
+
+      adminStatus.textContent = "Admin session active.";
+      updateAdminControls();
+      adminLoginButton.disabled = false;
+      await loadPastes();
+    });
+
+    // Sign out the administrator and return to this browser's anonymous author session.
+    adminLogoutButton.addEventListener("click", async () => {
+      adminLogoutButton.disabled = true;
+      const { error } = await supabaseClient.auth.signOut();
+      if (error) {
+        adminStatus.textContent = "Could not sign out. Please try again.";
+        adminLogoutButton.disabled = false;
+        return;
+      }
+      currentUserId = await ensureAnonymousSession();
+      isAdmin = false;
+      updateAdminControls();
+      adminStatus.textContent = "Signed out of admin mode.";
+      adminLogoutButton.disabled = false;
+      await loadPastes();
+    });
 
     // Insert the original text, then clear the composer only after a successful save.
     pasteForm.addEventListener("submit", async (event) => {
@@ -384,6 +496,8 @@
       shareButton.disabled = true;
       ensureAnonymousSession().then(async (userId) => {
         currentUserId = userId;
+        isAdmin = await checkAdminRole();
+        updateAdminControls();
         shareButton.disabled = false;
         await loadPastes();
         window.setInterval(loadPastes, 10000);
