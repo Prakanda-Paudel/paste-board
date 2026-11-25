@@ -58,6 +58,8 @@ let isSignUpMode = false;
 let activeView = "home";
 let pollLoadInProgress = false;
 let activeGameId = null;
+let manuallySelectedGameId = null;
+let knownGameStatuses = new Map();
 let gameRefreshTimer = null;
 let scoreboardRefreshTimer = null;
 
@@ -957,8 +959,18 @@ async function loadChallenges() {
               return;
             }
             activeGameId = game.id;
+            manuallySelectedGameId = game.id;
             await loadChallenges();
             await loadMyGames();
+            showView("games");
+            document.querySelectorAll("[data-game-part]").forEach((item) => {
+              const selected = item.dataset.gamePart === "my-game";
+              item.classList.toggle("is-active", selected);
+              item.setAttribute("aria-selected", String(selected));
+            });
+            document.querySelectorAll(".game-part").forEach((part) => {
+              part.hidden = part.id !== "game-my-game";
+            });
           });
           actions.append(accept);
         }
@@ -1024,6 +1036,7 @@ async function loadMyGames() {
     card.append(title, meta);
     card.addEventListener("click", () => {
       activeGameId = game.id;
+      manuallySelectedGameId = game.id;
       list.querySelectorAll(".active-game-card").forEach((item) => item.classList.remove("is-selected"));
       card.classList.add("is-selected");
       renderGame(game);
@@ -1031,11 +1044,37 @@ async function loadMyGames() {
     list.append(card);
   });
 
-  const selected = relevant.find((game) => game.id === activeGameId) || relevant.find((game) => game.status === "active") || relevant[0];
+  const selected = manuallySelectedGameId
+    ? relevant.find((game) => game.id === manuallySelectedGameId)
+    : (relevant.find((game) => game.status === "active") || relevant[0]);
+
   if (selected) {
     activeGameId = selected.id;
     renderGame(selected);
   }
+
+  const creatorTransitions = relevant.filter((game) =>
+    game.creator_id === currentUserId
+    && game.status === "active"
+    && knownGameStatuses.get(game.id) === "open"
+  );
+  creatorTransitions.forEach((game) => {
+    if (manuallySelectedGameId && manuallySelectedGameId !== game.id) return;
+    activeGameId = game.id;
+    manuallySelectedGameId = game.id;
+    setMessage(document.querySelector("#games-status"), `${game.opponent_username || "Player"} accepted your challenge!`);
+    showView("games");
+    document.querySelectorAll("[data-game-part]").forEach((item) => {
+      const selected = item.dataset.gamePart === "my-game";
+      item.classList.toggle("is-active", selected);
+      item.setAttribute("aria-selected", String(selected));
+    });
+    document.querySelectorAll(".game-part").forEach((part) => {
+      part.hidden = part.id !== "game-my-game";
+    });
+  });
+
+  knownGameStatuses = new Map(relevant.map((game) => [game.id, game.status]));
 }
 
 function renderGame(game) {
@@ -1083,10 +1122,49 @@ function renderGame(game) {
 }
 
 async function playMove(gameId, cellIndex) {
+  const status = document.querySelector("#games-status");
+
+  const { data: freshGame, error: freshError } = await supabaseClient
+    .from("ttt_games")
+    .select("id, creator_id, creator_username, opponent_id, opponent_username, board, turn, status, winner_id, result, created_at, updated_at")
+    .eq("id", gameId)
+    .single();
+
+  if (freshError) {
+    console.error("Couldn’t reload game before move", freshError);
+    setMessage(status, freshError.message || "Couldn’t reload the game.", true);
+    return;
+  }
+
+  const myMark = freshGame.creator_id === currentUserId ? "X" : freshGame.opponent_id === currentUserId ? "O" : null;
+  if (freshGame.status !== "active" || freshGame.turn !== myMark || freshGame.board[cellIndex] !== "-") {
+    renderGame(freshGame);
+    setMessage(status, "That move is no longer available.", true);
+    return;
+  }
+
   const { error } = await supabaseClient.rpc("play_ttt_move", { p_game_id: gameId, p_cell: cellIndex });
   if (error) {
-    setMessage(document.querySelector("#games-status"), "Couldn’t make that move.", true);
+    console.error("Tic-Tac-Toe move failed", error);
+    setMessage(status, error.message || "Couldn’t make that move.", true);
+    await loadMyGames();
     return;
+  }
+
+  const { data: updatedGame, error: updateError } = await supabaseClient
+    .from("ttt_games")
+    .select("id, creator_id, creator_username, opponent_id, opponent_username, board, turn, status, winner_id, result, created_at, updated_at")
+    .eq("id", gameId)
+    .single();
+
+  if (updateError) {
+    console.error("Couldn’t reload updated game", updateError);
+    setMessage(status, updateError.message || "Move saved, but the board couldn’t refresh.", true);
+  } else {
+    activeGameId = gameId;
+    manuallySelectedGameId = gameId;
+    renderGame(updatedGame);
+    setMessage(status, updatedGame.status === "finished" ? "Game finished." : "Move saved.");
   }
   await loadMyGames();
 }
