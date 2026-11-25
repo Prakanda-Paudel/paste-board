@@ -196,9 +196,11 @@ h1 { margin: 0; font-size: 42px; line-height: 1.08; }
 .ttt-header h2 { margin: 0; font-size: 20px; }
 .ttt-turn { margin: 0; color: var(--muted); font-size: 12px; font-weight: 800; text-align: right; }
 .ttt-board { display: grid; width: min(100%, 390px); aspect-ratio: 1; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 auto; }
-.ttt-cell { display: grid; min-width: 0; aspect-ratio: 1; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: var(--page); color: var(--ink); cursor: pointer; font-size: clamp(30px, 10vw, 58px); font-weight: 850; }
-.ttt-cell:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.ttt-cell { display: grid; min-width: 0; aspect-ratio: 1; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: var(--page); color: var(--ink); cursor: default; font-size: clamp(30px, 10vw, 58px); font-weight: 850; }
+.ttt-cell:not(:disabled) { cursor: pointer; }
+.ttt-cell:not(:disabled):hover { border-color: var(--accent); background: var(--accent-soft); }
 .ttt-cell:disabled { cursor: default; }
+.ttt-cell:disabled:hover { border-color: var(--line); background: var(--page); }
 .ttt-result { min-height: 24px; margin: 14px 0 0; color: var(--accent); font-size: 14px; font-weight: 800; text-align: center; }
 .scoreboard-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
 .scoreboard { width: 100%; min-width: 620px; border-collapse: collapse; }
