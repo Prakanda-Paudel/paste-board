@@ -178,6 +178,35 @@ h1 { margin: 0; font-size: 42px; line-height: 1.08; }
 .section-description { margin: 8px 0 0; color: var(--muted); line-height: 1.5; }
 .quick-heading { margin-top: 32px; }
 .quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.game-subtabs { display: inline-flex; max-width: 100%; gap: 4px; margin-bottom: 18px; padding: 4px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.game-subtab { min-height: 38px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 800; }
+.game-subtab.is-active { background: var(--accent-soft); color: var(--accent); }
+.game-action-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.challenge-list, .active-game-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.challenge-card, .active-game-card { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); box-shadow: var(--shadow); }
+.challenge-card { padding: 16px; }
+.challenge-card h2, .active-game-card h2 { margin: 0; font-size: 16px; }
+.challenge-meta, .active-game-meta { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.challenge-actions, .active-game-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.active-game-card { padding: 14px; cursor: pointer; }
+.active-game-card:hover { border-color: var(--accent); }
+.active-game-card.is-selected { border-color: var(--accent); background: var(--accent-soft); }
+.ttt-live { max-width: 620px; margin: 18px auto 0; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); }
+.ttt-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.ttt-header h2 { margin: 0; font-size: 20px; }
+.ttt-turn { margin: 0; color: var(--muted); font-size: 12px; font-weight: 800; text-align: right; }
+.ttt-board { display: grid; width: min(100%, 390px); aspect-ratio: 1; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 auto; }
+.ttt-cell { display: grid; min-width: 0; aspect-ratio: 1; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: var(--page); color: var(--ink); cursor: pointer; font-size: clamp(30px, 10vw, 58px); font-weight: 850; }
+.ttt-cell:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.ttt-cell:disabled { cursor: default; }
+.ttt-result { min-height: 24px; margin: 14px 0 0; color: var(--accent); font-size: 14px; font-weight: 800; text-align: center; }
+.scoreboard-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.scoreboard { width: 100%; min-width: 620px; border-collapse: collapse; }
+.scoreboard th, .scoreboard td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; }
+.scoreboard th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+.scoreboard td { font-size: 13px; }
+.scoreboard tbody tr:last-child td { border-bottom: 0; }
+.scoreboard tbody tr:first-child td { background: var(--accent-soft); }
 .quick-link { display: grid; min-height: 98px; grid-template-columns: 40px 1fr 24px; align-items: center; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease; }
 .quick-link:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: var(--shadow); }
 .quick-number { color: var(--muted); font-size: 12px; font-weight: 800; }
@@ -277,7 +306,13 @@ h1 { margin: 0; font-size: 42px; line-height: 1.08; }
   .section-heading h1 { font-size: 28px; }
   .hero-tagline { font-size: 16px; }
   .hero-description { font-size: 14px; }
-  .quick-grid { grid-template-columns: 1fr; gap: 8px; }
+  .quick-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .challenge-list, .active-game-list { grid-template-columns: 1fr; }
+  .game-subtabs { display: grid; width: 100%; grid-template-columns: repeat(3, 1fr); }
+  .game-subtab { padding: 0 6px; }
+  .game-action-row { align-items: flex-start; flex-direction: column; }
+  .ttt-live { padding: 12px; }
+  .ttt-header { align-items: flex-start; }
   .quick-link { min-height: 78px; }
   .account-panel { padding: 13px; }
   .account-form { grid-template-columns: 1fr; }

@@ -57,6 +57,9 @@ let isApproved = false;
 let isSignUpMode = false;
 let activeView = "home";
 let pollLoadInProgress = false;
+let activeGameId = null;
+let gameRefreshTimer = null;
+let scoreboardRefreshTimer = null;
 
 // Show all content as text, never as parsed markup.
 function setMessage(element, message, isError = false) {
@@ -122,6 +125,7 @@ function showView(name) {
   if (name === "ideas") loadIdeas();
   if (name === "polls") loadPolls();
   if (name === "paste" && (isAdmin || isApproved)) loadPastes();
+  if (name === "games") loadGamesView();
 }
 navTabs.forEach((tab) => tab.addEventListener("click", () => showView(tab.dataset.view)));
 document.querySelectorAll("[data-go-view]").forEach((button) => button.addEventListener("click", () => showView(button.dataset.goView)));
@@ -874,6 +878,278 @@ async function initializeAuth() {
   }
 }
 
+// Tic-Tac-Toe challenges, active games and scoreboard.
+function getGameUsername(game) {
+  if (!game) return "Player";
+  return game.creator_id === currentUserId ? game.creator_username : game.opponent_username || game.creator_username;
+}
+
+async function loadGamePart(part) {
+  if (part === "challenges") await loadChallenges();
+  if (part === "my-game") await loadMyGames();
+  if (part === "scoreboard") await loadScoreboard();
+}
+
+async function loadChallenges() {
+  const status = document.querySelector("#games-status");
+  setMessage(status, "Loading challenges...");
+  const list = document.querySelector("#challenge-list");
+  const challengeButton = document.querySelector("#challenge-button");
+  const authMessage = document.querySelector("#game-auth-message");
+  const signedIn = Boolean(currentUserId);
+  challengeButton.hidden = !signedIn;
+  authMessage.textContent = signedIn ? "Create a challenge or accept someone else’s game." : "Log in to play";
+
+  const { data, error } = await supabaseClient
+    .from("ttt_games")
+    .select("id, creator_id, creator_username, opponent_id, opponent_username, status, created_at")
+    .eq("status", "open")
+    .order("created_at", { ascending: false });
+  if (error) {
+    setMessage(status, "Couldn’t load challenges. Please try again.", true);
+    if (!list.childElementCount) list.replaceChildren(emptyState("Challenges are temporarily unavailable."));
+    return;
+  }
+  list.replaceChildren();
+  if (!data.length) {
+    list.append(emptyState("No open challenges yet."));
+  } else {
+    data.forEach((game) => {
+      const card = document.createElement("article");
+      card.className = "challenge-card";
+      const title = document.createElement("h2");
+      title.textContent = `Challenge by ${game.creator_username}`;
+      const meta = document.createElement("p");
+      meta.className = "challenge-meta";
+      meta.textContent = `${formatDate(game.created_at)} · Waiting for X/O opponent`;
+      card.append(title, meta);
+
+      if (signedIn) {
+        const actions = document.createElement("div");
+        actions.className = "challenge-actions";
+        if (game.creator_id === currentUserId) {
+          const cancel = document.createElement("button");
+          cancel.className = "button button-quiet";
+          cancel.type = "button";
+          cancel.textContent = "Cancel";
+          cancel.addEventListener("click", async () => {
+            cancel.disabled = true;
+            const { error: cancelError } = await supabaseClient.rpc("cancel_ttt_challenge", { p_game_id: game.id });
+            if (cancelError) {
+              setMessage(status, "Couldn’t cancel that challenge.", true);
+              cancel.disabled = false;
+              return;
+            }
+            await loadChallenges();
+          });
+          actions.append(cancel);
+        } else {
+          const accept = document.createElement("button");
+          accept.className = "button button-primary";
+          accept.type = "button";
+          accept.textContent = "Accept";
+          accept.addEventListener("click", async () => {
+            accept.disabled = true;
+            const { error: acceptError } = await supabaseClient.rpc("accept_ttt_challenge", { p_game_id: game.id });
+            if (acceptError) {
+              setMessage(status, "Couldn’t accept that challenge.", true);
+              accept.disabled = false;
+              return;
+            }
+            activeGameId = game.id;
+            await loadChallenges();
+            await loadMyGames();
+          });
+          actions.append(accept);
+        }
+        card.append(actions);
+      }
+      list.append(card);
+    });
+  }
+  setMessage(status, `${data.length} open challenge${data.length === 1 ? "" : "s"}`);
+}
+
+async function createChallenge() {
+  if (!currentUserId) return;
+  const status = document.querySelector("#games-status");
+  setMessage(status, "Creating challenge...");
+  const { data, error } = await supabaseClient.rpc("create_ttt_challenge");
+  if (error) {
+    setMessage(status, "Couldn’t create the challenge.", true);
+    return;
+  }
+  await loadChallenges();
+  await loadMyGames();
+  if (data) activeGameId = data;
+  setMessage(status, "Challenge created. Waiting for an opponent.");
+}
+
+async function loadMyGames() {
+  const loginRequired = document.querySelector("#game-login-required");
+  const myGameContent = document.querySelector("#my-game-content");
+  const list = document.querySelector("#active-game-list");
+  const signedIn = Boolean(currentUserId);
+  loginRequired.hidden = signedIn;
+  myGameContent.hidden = !signedIn;
+  if (!signedIn) return;
+
+  const { data, error } = await supabaseClient
+    .from("ttt_games")
+    .select("id, creator_id, creator_username, opponent_id, opponent_username, board, turn, status, winner_id, result, created_at, updated_at")
+    .or(`creator_id.eq.${currentUserId},opponent_id.eq.${currentUserId}`)
+    .in("status", ["active", "open", "finished"])
+    .order("updated_at", { ascending: false });
+  if (error) {
+    setMessage(document.querySelector("#games-status"), "Couldn’t load your games.", true);
+    return;
+  }
+  list.replaceChildren();
+  const relevant = data.filter((game) => game.status !== "cancelled");
+  if (!relevant.length) {
+    list.append(emptyState("No games yet. Accept or create a challenge."));
+    document.querySelector("#ttt-live").hidden = true;
+    return;
+  }
+  relevant.forEach((game) => {
+    const card = document.createElement("article");
+    card.className = `active-game-card${activeGameId === game.id ? " is-selected" : ""}`;
+    const title = document.createElement("h2");
+    title.textContent = game.status === "open"
+      ? `${game.creator_username} vs waiting opponent`
+      : `${game.creator_username} vs ${game.opponent_username || "opponent"}`;
+    const meta = document.createElement("p");
+    meta.className = "active-game-meta";
+    meta.textContent = `${game.status} · ${game.status === "active" ? `${game.turn}'s turn` : game.result ? `Result: ${game.result}` : ""}`;
+    card.append(title, meta);
+    card.addEventListener("click", () => {
+      activeGameId = game.id;
+      list.querySelectorAll(".active-game-card").forEach((item) => item.classList.remove("is-selected"));
+      card.classList.add("is-selected");
+      renderGame(game);
+    });
+    list.append(card);
+  });
+
+  const selected = relevant.find((game) => game.id === activeGameId) || relevant.find((game) => game.status === "active") || relevant[0];
+  if (selected) {
+    activeGameId = selected.id;
+    renderGame(selected);
+  }
+}
+
+function renderGame(game) {
+  if (!game) return;
+  const live = document.querySelector("#ttt-live");
+  live.hidden = false;
+  const title = document.querySelector("#ttt-title");
+  const statusLabel = document.querySelector("#ttt-status-label");
+  const turn = document.querySelector("#ttt-turn");
+  const result = document.querySelector("#ttt-result");
+  const boardElement = document.querySelector("#ttt-board");
+  title.textContent = `${game.creator_username} vs ${game.opponent_username || "waiting"}`;
+  statusLabel.textContent = game.status === "finished" ? "Finished" : game.status === "open" ? "Challenge open" : "Match active";
+
+  let myTurn = false;
+  let myMark = null;
+  if (game.creator_id === currentUserId) myMark = "X";
+  if (game.opponent_id === currentUserId) myMark = "O";
+  myTurn = game.status === "active" && game.turn === myMark;
+  turn.textContent = game.status === "active" ? (myTurn ? "Your turn" : `Waiting for ${game.turn}`) : "";
+
+  if (game.status === "finished") {
+    if (game.result === "draw") result.textContent = "Draw";
+    else if (game.winner_id === currentUserId) result.textContent = "You won";
+    else result.textContent = "You lost";
+  } else if (game.status === "open") {
+    result.textContent = "Waiting for an opponent";
+  } else {
+    result.textContent = "";
+  }
+
+  boardElement.replaceChildren();
+  const cells = game.board.split("");
+  cells.forEach((mark, index) => {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "ttt-cell";
+    cell.setAttribute("role", "gridcell");
+    cell.setAttribute("aria-label", `Square ${index + 1}${mark === "-" ? " empty" : ` marked ${mark}`}`);
+    cell.textContent = mark === "-" ? "" : mark;
+    cell.disabled = !myTurn || mark !== "-";
+    cell.addEventListener("click", () => playMove(game.id, index));
+    boardElement.append(cell);
+  });
+}
+
+async function playMove(gameId, cellIndex) {
+  const { error } = await supabaseClient.rpc("play_ttt_move", { p_game_id: gameId, p_cell: cellIndex });
+  if (error) {
+    setMessage(document.querySelector("#games-status"), "Couldn’t make that move.", true);
+    return;
+  }
+  await loadMyGames();
+}
+
+async function loadScoreboard() {
+  setMessage(document.querySelector("#scoreboard-status"), "Loading scoreboard...");
+  const { data, error } = await supabaseClient
+    .from("ttt_scoreboard")
+    .select("username, wins, losses, draws, games, win_rate")
+    .order("wins", { ascending: false });
+  if (error) {
+    setMessage(document.querySelector("#scoreboard-status"), "Couldn’t load the scoreboard.", true);
+    return;
+  }
+  const ranked = [...data].sort((a, b) => b.wins - a.wins || b.win_rate - a.win_rate);
+  const body = document.querySelector("#scoreboard-body");
+  body.replaceChildren();
+  ranked.forEach((row, index) => {
+    const tr = document.createElement("tr");
+    [index + 1, row.username, row.wins, row.losses, row.draws, row.games, `${Number(row.win_rate).toFixed(1)}%`].forEach((value) => {
+      const td = document.createElement("td");
+      td.textContent = String(value);
+      tr.append(td);
+    });
+    body.append(tr);
+  });
+  setMessage(document.querySelector("#scoreboard-status"), `${ranked.length} player${ranked.length === 1 ? "" : "s"}`);
+}
+
+async function loadGamesView() {
+  await loadChallenges();
+  await loadMyGames();
+  await loadScoreboard();
+}
+
+async function refreshActiveGame() {
+  if (activeView !== "games") return;
+  await loadChallenges();
+  await loadMyGames();
+}
+
+async function refreshScoreboard() {
+  if (activeView !== "games") return;
+  await loadScoreboard();
+}
+
+// Attach Games sub-tabs and refresh active games every 3 seconds / scoreboard every 10 seconds.
+const challengeButton = document.querySelector("#challenge-button");
+challengeButton.addEventListener("click", createChallenge);
+document.querySelectorAll("[data-game-part]").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll("[data-game-part]").forEach((item) => {
+      const selected = item === tab;
+      item.classList.toggle("is-active", selected);
+      item.setAttribute("aria-selected", String(selected));
+    });
+    document.querySelectorAll(".game-part").forEach((part) => {
+      part.hidden = part.id !== `game-${tab.dataset.gamePart}`;
+    });
+    loadGamePart(tab.dataset.gamePart);
+  });
+});
+
 async function initializeHub() {
   await refreshPublicSections();
   await initializeAuth();
@@ -881,6 +1157,9 @@ async function initializeHub() {
     refreshPublicSections();
     if (isApproved || isAdmin) loadPastes();
   }, 10000);
+
+  gameRefreshTimer = window.setInterval(refreshActiveGame, 3000);
+  scoreboardRefreshTimer = window.setInterval(refreshScoreboard, 10000);
 }
 
 initializeHub();

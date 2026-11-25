@@ -24,6 +24,7 @@
         <button class="nav-tab" id="tab-ideas" type="button" role="tab" aria-selected="false" data-view="ideas">Ideas</button>
         <button class="nav-tab" id="tab-polls" type="button" role="tab" aria-selected="false" data-view="polls">Polls</button>
         <button class="nav-tab" id="tab-paste" type="button" role="tab" aria-selected="false" data-view="paste">Paste</button>
+        <button class="nav-tab" id="tab-games" type="button" role="tab" aria-selected="false" data-view="games">Games</button>
       </nav>
       <div class="topbar-actions">
         <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch theme">
@@ -79,6 +80,7 @@
           <button class="quick-link quick-ideas" type="button" data-go-view="ideas"><span class="quick-number">02</span><span><strong>Ideas</strong><small>What’s on our minds</small></span><span class="quick-arrow" aria-hidden="true">↗</span></button>
           <button class="quick-link quick-polls" type="button" data-go-view="polls"><span class="quick-number">03</span><span><strong>Polls</strong><small>Make a call together</small></span><span class="quick-arrow" aria-hidden="true">↗</span></button>
           <button class="quick-link quick-paste" type="button" data-go-view="paste"><span class="quick-number">04</span><span><strong>Paste</strong><small>Share text and code</small></span><span class="quick-arrow" aria-hidden="true">↗</span></button>
+          <button class="quick-link quick-games" type="button" data-go-view="games"><span class="quick-number">05</span><span><strong>Games</strong><small>Tic-Tac-Toe together</small></span><span class="quick-arrow" aria-hidden="true">↗</span></button>
         </div>
       </section>
 
@@ -156,6 +158,46 @@
           </form>
           <div class="paste-list" id="paste-list" aria-live="polite"></div>
         </div>
+      </section>
+
+      <section class="view" id="view-games" role="tabpanel" aria-labelledby="tab-games" hidden>
+        <div class="section-heading">
+          <div><p class="eyebrow">Play together</p><h1>Games</h1><p class="section-description">Tic-Tac-Toe challenges, live matches and Hub rankings.</p></div>
+          <p class="section-status" id="games-status" role="status" aria-live="polite"></p>
+        </div>
+        <div class="game-subtabs" role="tablist" aria-label="Game sections">
+          <button class="game-subtab is-active" type="button" role="tab" aria-selected="true" data-game-part="challenges">Challenges</button>
+          <button class="game-subtab" type="button" role="tab" aria-selected="false" data-game-part="my-game">My game</button>
+          <button class="game-subtab" type="button" role="tab" aria-selected="false" data-game-part="scoreboard">Scoreboard</button>
+        </div>
+        <section class="game-part" id="game-challenges" role="tabpanel">
+          <div class="game-action-row">
+            <p id="game-auth-message" class="status-message">Sign in to create or accept a challenge.</p>
+            <button class="button button-primary" id="challenge-button" type="button" hidden>Challenge someone</button>
+          </div>
+          <div class="challenge-list" id="challenge-list" aria-live="polite"></div>
+        </section>
+        <section class="game-part" id="game-my-game" role="tabpanel" hidden>
+          <div class="locked-message" id="game-login-required">
+            <p>Log in to play Tic-Tac-Toe.</p>
+            <button class="button button-quiet" type="button" data-open-account>Open account</button>
+          </div>
+          <div id="my-game-content" hidden>
+            <div class="active-game-list" id="active-game-list" aria-live="polite"></div>
+            <section class="ttt-live" id="ttt-live" hidden>
+              <div class="ttt-header">
+                <div><p class="eyebrow" id="ttt-status-label">Match</p><h2 id="ttt-title">Tic-Tac-Toe</h2></div>
+                <p class="ttt-turn" id="ttt-turn"></p>
+              </div>
+              <div class="ttt-board" id="ttt-board" role="grid" aria-label="Tic-Tac-Toe board"></div>
+              <p class="ttt-result" id="ttt-result" role="status" aria-live="polite"></p>
+            </section>
+          </div>
+        </section>
+        <section class="game-part" id="game-scoreboard" role="tabpanel" hidden>
+          <p class="status-message" id="scoreboard-status" role="status" aria-live="polite">Loading scoreboard...</p>
+          <div class="scoreboard-wrap"><table class="scoreboard"><thead><tr><th>Rank</th><th>Username</th><th>Wins</th><th>Losses</th><th>Draws</th><th>Played</th><th>Win rate</th></tr></thead><tbody id="scoreboard-body"></tbody></table></div>
+        </section>
       </section>
     </main>
 
