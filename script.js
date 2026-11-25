@@ -642,7 +642,10 @@ authForm.addEventListener("submit", async (event) => {
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     accountPasswordInput.value = "";
     if (error) {
-      setMessage(authStatus, "Sign-in failed. Check the username and password.", true);
+      const reason = error.message === "Invalid login credentials"
+        ? "The username or password is incorrect."
+        : error.message || "Sign-in failed. Please try again.";
+      setMessage(authStatus, reason, true);
       authSubmitButton.disabled = false;
       return;
     }

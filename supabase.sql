@@ -72,3 +72,171 @@ drop policy if exists "Anyone can read votes" on public.votes;
 create policy "Anyone can read votes" on public.votes for select to anon, authenticated using (true);
 drop policy if exists "Anyone can vote" on public.votes;
 create policy "Anyone can vote" on public.votes for insert to anon, authenticated with check (true);
+
+-- Hub account approval and admin access
+create table if not exists public.pasteboard_admins (
+  user_id uuid primary key references auth.users(id) on delete cascade
+);
+
+create table if not exists public.pasteboard_members (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  username text not null unique check (char_length(username) between 3 and 24),
+  status text not null default 'pending' check (status in ('pending', 'approved')),
+  created_at timestamptz not null default now()
+);
+
+alter table public.pasteboard_admins enable row level security;
+alter table public.pasteboard_members enable row level security;
+revoke all on table public.pasteboard_admins, public.pasteboard_members from public, anon, authenticated;
+
+insert into public.pasteboard_members (user_id, username, status)
+select id, 'prakanda', 'approved'
+from auth.users
+where lower(email) = '335849874+prakanda-paudel@users.noreply.github.com'
+on conflict (user_id) do update
+set username = excluded.username, status = 'approved';
+
+insert into public.pasteboard_admins (user_id)
+select id
+from auth.users
+where lower(email) = '335849874+prakanda-paudel@users.noreply.github.com'
+on conflict (user_id) do nothing;
+
+insert into public.pasteboard_members (user_id, username, status)
+select
+  auth_user.id,
+  lower(auth_user.raw_user_meta_data ->> 'username'),
+  'pending'
+from auth.users auth_user
+where auth_user.raw_user_meta_data ->> 'username' is not null
+  and auth_user.id not in (select user_id from public.pasteboard_admins)
+on conflict (user_id) do nothing;
+
+create or replace function public.is_pasteboard_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.pasteboard_admins
+    where user_id = auth.uid()
+  );
+$$;
+revoke all on function public.is_pasteboard_admin() from public;
+grant execute on function public.is_pasteboard_admin() to anon, authenticated;
+
+create or replace function public.is_pasteboard_approved()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.pasteboard_members
+    where user_id = auth.uid()
+      and status = 'approved'
+  ) or public.is_pasteboard_admin();
+$$;
+revoke all on function public.is_pasteboard_approved() from public;
+grant execute on function public.is_pasteboard_approved() to anon, authenticated;
+
+create or replace function public.get_pending_pasteboard_users()
+returns table (user_id uuid, username text, created_at timestamptz)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_pasteboard_admin() then
+    raise exception 'not authorized';
+  end if;
+
+  return query
+  select member.user_id, member.username, member.created_at
+  from public.pasteboard_members member
+  where member.status = 'pending'
+  order by member.created_at;
+end;
+$$;
+revoke all on function public.get_pending_pasteboard_users() from public;
+grant execute on function public.get_pending_pasteboard_users() to authenticated;
+
+create or replace function public.approve_pasteboard_user(target_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_pasteboard_admin() then
+    raise exception 'not authorized';
+  end if;
+
+  update public.pasteboard_members
+  set status = 'approved'
+  where user_id = target_user_id;
+end;
+$$;
+revoke all on function public.approve_pasteboard_user(uuid) from public;
+grant execute on function public.approve_pasteboard_user(uuid) to authenticated;
+
+create or replace function public.create_pasteboard_member_for_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  requested_username text;
+begin
+  requested_username := lower(coalesce(new.raw_user_meta_data ->> 'username', ''));
+  if requested_username = '' or requested_username = 'prakanda' then
+    return new;
+  end if;
+
+  insert into public.pasteboard_members (user_id, username, status)
+  values (new.id, requested_username, 'pending')
+  on conflict (user_id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists pasteboard_auth_user_created on auth.users;
+create trigger pasteboard_auth_user_created
+  after insert on auth.users
+  for each row
+  execute function public.create_pasteboard_member_for_auth_user();
+
+-- Keep the existing paste table protected and add fields used by Hub.
+alter table public.pastes add column if not exists title text not null default 'Untitled paste';
+alter table public.pastes add column if not exists owner_id uuid references auth.users(id) on delete cascade;
+alter table public.pastes enable row level security;
+
+drop policy if exists "Anyone can read pastes" on public.pastes;
+drop policy if exists "Anyone can add pastes" on public.pastes;
+drop policy if exists "Authors can add pastes" on public.pastes;
+drop policy if exists "Authors can delete own pastes" on public.pastes;
+drop policy if exists "Approved users can read pastes" on public.pastes;
+drop policy if exists "Approved users can add own pastes" on public.pastes;
+drop policy if exists "Approved authors and admins can delete pastes" on public.pastes;
+
+create policy "Approved users can read pastes"
+  on public.pastes for select to authenticated
+  using ((select public.is_pasteboard_approved()));
+
+create policy "Approved users can add own pastes"
+  on public.pastes for insert to authenticated
+  with check ((select public.is_pasteboard_approved()) and owner_id = (select auth.uid()));
+
+create policy "Approved authors and admins can delete pastes"
+  on public.pastes for delete to authenticated
+  using (((select public.is_pasteboard_approved()) and owner_id = (select auth.uid())) or (select public.is_pasteboard_admin()));
+
+revoke all on table public.pastes from public, anon;
+grant select, insert, delete on table public.pastes to authenticated;
+revoke update on table public.pastes from authenticated;
