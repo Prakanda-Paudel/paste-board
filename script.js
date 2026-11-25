@@ -22,6 +22,8 @@ const authStatus = document.querySelector("#auth-status");
 const adminTools = document.querySelector("#admin-tools");
 const approvalStatus = document.querySelector("#approval-status");
 const pendingList = document.querySelector("#pending-list");
+const allUsersList = document.querySelector("#all-users-list");
+const allUsersStatus = document.querySelector("#all-users-status");
 const refreshApprovalsButton = document.querySelector("#refresh-approvals");
 const projectForm = document.querySelector("#project-form");
 const projectList = document.querySelector("#project-list");
@@ -546,6 +548,57 @@ async function checkApprovalStatus() {
   return !error && data === true;
 }
 
+async function loadAllUsers() {
+  if (!isAdmin) return;
+  setMessage(allUsersStatus, "Loading accounts...");
+  const { data, error } = await supabaseClient.rpc("get_all_pasteboard_users");
+  if (error) {
+    setMessage(allUsersStatus, "Couldn’t load accounts.", true);
+    return;
+  }
+  allUsersList.replaceChildren();
+  if (!data.length) {
+    setMessage(allUsersStatus, "No accounts found.");
+    return;
+  }
+  setMessage(allUsersStatus, `${data.length} account${data.length === 1 ? "" : "s"}`);
+  data.forEach((member) => {
+    const row = document.createElement("li");
+    row.className = "pending-user";
+    const details = document.createElement("div");
+    const username = document.createElement("strong");
+    username.className = "pending-user-name";
+    username.textContent = member.username;
+    const state = document.createElement("time");
+    state.className = "pending-user-time";
+    state.textContent = member.status === "approved" ? "Approved" : "Pending";
+    details.append(username, state);
+
+    const actions = document.createElement("div");
+    actions.className = "account-row-actions";
+    if (member.username !== ADMIN_ID) {
+      const remove = document.createElement("button");
+      remove.className = "button button-danger";
+      remove.type = "button";
+      remove.textContent = "Delete";
+      remove.addEventListener("click", async () => {
+        if (!confirm(`Delete account “${member.username}”? This also removes their notes and approval status.`)) return;
+        remove.disabled = true;
+        const { error: deleteError } = await supabaseClient.rpc("delete_pasteboard_user", { target_user_id: member.user_id });
+        if (deleteError) {
+          setMessage(allUsersStatus, "Couldn’t delete that account.", true);
+          remove.disabled = false;
+          return;
+        }
+        await Promise.all([loadPendingUsers(), loadAllUsers()]);
+      });
+      actions.append(remove);
+    }
+    row.append(details, actions);
+    allUsersList.append(row);
+  });
+}
+
 async function loadPendingUsers() {
   if (!isAdmin) return;
   setMessage(approvalStatus, "Loading requests...");
@@ -583,10 +636,30 @@ async function loadPendingUsers() {
         approve.disabled = false;
         return;
       }
-      await loadPendingUsers();
+      await Promise.all([loadPendingUsers(), loadAllUsers()]);
     });
+
+    const reject = document.createElement("button");
+    reject.className = "button button-danger";
+    reject.type = "button";
+    reject.textContent = "Reject";
+    reject.addEventListener("click", async () => {
+      if (!confirm(`Reject account “${member.username}”?`)) return;
+      reject.disabled = true;
+      const { error: rejectError } = await supabaseClient.rpc("reject_pasteboard_user", { target_user_id: member.user_id });
+      if (rejectError) {
+        setMessage(approvalStatus, "Couldn’t reject that account.", true);
+        reject.disabled = false;
+        return;
+      }
+      await Promise.all([loadPendingUsers(), loadAllUsers()]);
+    });
+
+    const actions = document.createElement("div");
+    actions.className = "account-row-actions";
+    actions.append(approve, reject);
     details.append(username, time);
-    row.append(details, approve);
+    row.append(details, actions);
     pendingList.append(row);
   });
 }
@@ -598,9 +671,11 @@ async function showAuthenticatedUser(user, requestedUsername = "") {
   accountUsernameInput.value = isAdmin ? ADMIN_ID : (user.user_metadata?.username || requestedUsername);
   accountPasswordInput.value = "";
   updateAuthControls();
+  setAccountPanelOpen(false);
   if (isAdmin) {
     setMessage(authStatus, "Admin signed in.");
-    await loadPendingUsers();
+    setAccountPanelOpen(false);
+    await Promise.all([loadPendingUsers(), loadAllUsers()]);
   } else if (isApproved) {
     setMessage(authStatus, "Account approved. You’re signed in.");
   } else {

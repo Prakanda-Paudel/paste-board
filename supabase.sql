@@ -185,6 +185,68 @@ $$;
 revoke all on function public.approve_pasteboard_user(uuid) from public;
 grant execute on function public.approve_pasteboard_user(uuid) to authenticated;
 
+create or replace function public.reject_pasteboard_user(target_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_pasteboard_admin() then
+    raise exception 'not authorized';
+  end if;
+  if target_user_id = auth.uid() then
+    raise exception 'cannot reject the admin';
+  end if;
+
+  delete from auth.users
+  where id = target_user_id;
+end;
+$$;
+revoke all on function public.reject_pasteboard_user(uuid) from public;
+grant execute on function public.reject_pasteboard_user(uuid) to authenticated;
+
+create or replace function public.delete_pasteboard_user(target_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_pasteboard_admin() then
+    raise exception 'not authorized';
+  end if;
+  if target_user_id = auth.uid() then
+    raise exception 'cannot delete the admin';
+  end if;
+
+  delete from auth.users
+  where id = target_user_id;
+end;
+$$;
+revoke all on function public.delete_pasteboard_user(uuid) from public;
+grant execute on function public.delete_pasteboard_user(uuid) to authenticated;
+
+create or replace function public.get_all_pasteboard_users()
+returns table (user_id uuid, username text, status text, created_at timestamptz)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_pasteboard_admin() then
+    raise exception 'not authorized';
+  end if;
+
+  return query
+  select member.user_id, member.username, member.status, member.created_at
+  from public.pasteboard_members member
+  order by member.status, member.username;
+end;
+$$;
+revoke all on function public.get_all_pasteboard_users() from public;
+grant execute on function public.get_all_pasteboard_users() to authenticated;
+
 create or replace function public.create_pasteboard_member_for_auth_user()
 returns trigger
 language plpgsql

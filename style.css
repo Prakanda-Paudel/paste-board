@@ -147,6 +147,11 @@ button:disabled { cursor: wait !important; opacity: .62; }
 .button-primary:hover:not(:disabled) { background: var(--accent-hover); }
 .button-quiet { border-color: var(--line); background: var(--surface); color: var(--ink); }
 .button-quiet:hover:not(:disabled) { background: var(--surface-soft); }
+.button-danger { border-color: color-mix(in srgb, var(--danger) 35%, var(--line)); background: var(--surface); color: var(--danger); }
+.button-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
+.account-row-actions { display: flex; align-items: center; gap: 8px; }
+.all-users-heading { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.all-users-heading h2 { margin: 0; font-size: 16px; }
 .status-message, .section-status { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .admin-tools { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
 .admin-tools h2 { margin: 0; font-size: 16px; }
