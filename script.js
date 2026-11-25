@@ -211,6 +211,24 @@ function projectCard(project) {
     });
     card.append(tags);
   }
+  if (isAdmin) {
+    const remove = document.createElement("button");
+    remove.className = "delete-button";
+    remove.type = "button";
+    remove.textContent = "Delete";
+    remove.addEventListener("click", async () => {
+      if (!confirm(`Delete project “${project.title}”?`)) return;
+      remove.disabled = true;
+      const { error } = await supabaseClient.rpc("delete_hub_project", { project_id: project.id });
+      if (error) {
+        setMessage(projectStatus, "Couldn’t delete that project.", true);
+        remove.disabled = false;
+        return;
+      }
+      await loadProjects();
+    });
+    card.append(remove);
+  }
   const linkUrl = safeWebUrl(project.link);
   if (linkUrl) {
     const link = document.createElement("a");
@@ -270,6 +288,24 @@ async function loadIdeas() {
     time.dateTime = idea.created_at;
     time.textContent = formatDate(idea.created_at);
     card.append(text, time);
+    if (isAdmin) {
+      const remove = document.createElement("button");
+      remove.className = "delete-button";
+      remove.type = "button";
+      remove.textContent = "Delete";
+      remove.addEventListener("click", async () => {
+        if (!confirm("Delete this idea?")) return;
+        remove.disabled = true;
+        const { error } = await supabaseClient.rpc("delete_hub_idea", { idea_id: idea.id });
+        if (error) {
+          setMessage(ideasStatus, "Couldn’t delete that idea.", true);
+          remove.disabled = false;
+          return;
+        }
+        await loadIdeas();
+      });
+      card.append(remove);
+    }
     ideaList.append(card);
   });
   setMessage(ideasStatus, `${data.length} idea${data.length === 1 ? "" : "s"}`);
@@ -378,6 +414,24 @@ function createPollCard(poll, options, counts) {
   time.dateTime = poll.created_at;
   time.textContent = formatDate(poll.created_at);
   heading.append(question, time);
+  if (isAdmin) {
+    const remove = document.createElement("button");
+    remove.className = "delete-button";
+    remove.type = "button";
+    remove.textContent = "Delete poll";
+    remove.addEventListener("click", async () => {
+      if (!confirm(`Delete poll “${poll.question}” and all of its votes?`)) return;
+      remove.disabled = true;
+      const { error } = await supabaseClient.rpc("delete_hub_poll", { poll_id: poll.id });
+      if (error) {
+        setMessage(pollsStatus, "Couldn’t delete that poll.", true);
+        remove.disabled = false;
+        return;
+      }
+      await loadPolls();
+    });
+    heading.append(remove);
+  }
   const choiceList = document.createElement("div");
   choiceList.className = "poll-options";
   const totalVotes = options.reduce((total, option) => total + (counts.get(option.id) || 0), 0);
@@ -598,6 +652,10 @@ async function loadAllUsers() {
     allUsersList.append(row);
   });
 }
+
+refreshApprovalsButton.addEventListener("click", async () => {
+  await Promise.all([loadPendingUsers(), isAdmin ? loadAllUsers() : Promise.resolve()]);
+});
 
 async function loadPendingUsers() {
   if (!isAdmin) return;

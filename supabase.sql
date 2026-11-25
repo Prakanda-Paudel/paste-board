@@ -185,6 +185,54 @@ $$;
 revoke all on function public.approve_pasteboard_user(uuid) from public;
 grant execute on function public.approve_pasteboard_user(uuid) to authenticated;
 
+create or replace function public.delete_hub_project(project_id bigint)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_pasteboard_admin() then
+    raise exception 'not authorized';
+  end if;
+  delete from public.projects where id = project_id;
+end;
+$$;
+revoke all on function public.delete_hub_project(bigint) from public;
+grant execute on function public.delete_hub_project(bigint) to authenticated;
+
+create or replace function public.delete_hub_idea(idea_id bigint)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_pasteboard_admin() then
+    raise exception 'not authorized';
+  end if;
+  delete from public.ideas where id = idea_id;
+end;
+$$;
+revoke all on function public.delete_hub_idea(bigint) from public;
+grant execute on function public.delete_hub_idea(bigint) to authenticated;
+
+create or replace function public.delete_hub_poll(poll_id bigint)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_pasteboard_admin() then
+    raise exception 'not authorized';
+  end if;
+  delete from public.polls where id = poll_id;
+end;
+$$;
+revoke all on function public.delete_hub_poll(bigint) from public;
+grant execute on function public.delete_hub_poll(bigint) to authenticated;
+
 create or replace function public.reject_pasteboard_user(target_user_id uuid)
 returns void
 language plpgsql
