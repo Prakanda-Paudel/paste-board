@@ -270,6 +270,10 @@ h1 { margin: 0; font-size: 42px; line-height: 1.08; }
 .paste-list { margin-top: 16px; }
 .paste-item { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); box-shadow: var(--shadow); }
 .paste-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+.paste-details { display: grid; min-width: 0; gap: 3px; }
+.paste-author-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.paste-author { color: var(--ink); font-size: 12px; overflow-wrap: anywhere; }
+.paste-admin-badge { padding: 2px 5px; border-radius: 3px; background: var(--accent-soft); color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: 0.06em; }
 .paste-time { color: var(--muted); font-size: 11px; }
 .paste-actions { display: flex; align-items: center; gap: 7px; }
 .paste-title { margin: 0; padding: 14px 15px 0; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }

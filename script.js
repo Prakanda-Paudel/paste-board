@@ -538,17 +538,49 @@ async function loadPastes() {
     pasteList.replaceChildren(emptyState("Pastes are temporarily unavailable."));
     return;
   }
+  let { data: authors, error: authorsError } = await supabaseClient.rpc("get_pasteboard_paste_authors");
+  if (authorsError && isAdmin) {
+    const { data: members, error: membersError } = await supabaseClient.rpc("get_all_pasteboard_users");
+    if (membersError) {
+      console.error("Couldn’t load paste writer names", authorsError, membersError);
+    } else {
+      authors = members.map((member) => ({ owner_id: member.user_id, username: member.username }));
+      authorsError = null;
+    }
+  }
+  if (authorsError) console.error("Couldn’t load paste writer names", authorsError);
+  const authorNames = new Map((authors || []).map((author) => [author.owner_id, author.username]));
   pasteList.replaceChildren();
   if (!data.length) pasteList.append(emptyState("No pastes yet. Share the first one."));
-  data.forEach((paste) => pasteList.append(createPasteCard(paste)));
-  setMessage(pasteStatus, `${data.length} paste${data.length === 1 ? "" : "s"}`);
+  data.forEach((paste) => {
+    const authorName = authorNames.get(paste.owner_id)
+      || (paste.owner_id === currentUserId ? accountUsernameInput.value || ADMIN_ID : "Hub member");
+    pasteList.append(createPasteCard(paste, authorName));
+  });
+  setMessage(pasteStatus, authorsError
+    ? "Pastes loaded, but writer names couldn’t be loaded."
+    : `${data.length} paste${data.length === 1 ? "" : "s"}`, Boolean(authorsError));
 }
 
-function createPasteCard(paste) {
+function createPasteCard(paste, authorName) {
   const card = document.createElement("article");
   card.className = "paste-item";
   const metadata = document.createElement("div");
   metadata.className = "paste-meta";
+  const details = document.createElement("div");
+  details.className = "paste-details";
+  const author = document.createElement("strong");
+  author.className = "paste-author";
+  author.textContent = authorName;
+  const authorRow = document.createElement("div");
+  authorRow.className = "paste-author-row";
+  if (authorName === ADMIN_ID) {
+    const adminBadge = document.createElement("span");
+    adminBadge.className = "paste-admin-badge";
+    adminBadge.textContent = "ADMIN";
+    authorRow.append(adminBadge);
+  }
+  authorRow.append(author);
   const time = document.createElement("time");
   time.className = "paste-time";
   time.dateTime = paste.created_at;
@@ -594,7 +626,8 @@ function createPasteCard(paste) {
   const body = document.createElement("pre");
   body.className = "paste-content";
   body.textContent = paste.content;
-  metadata.append(time, actions);
+  details.append(authorRow, time);
+  metadata.append(details, actions);
   card.append(metadata, title, body);
   return card;
 }

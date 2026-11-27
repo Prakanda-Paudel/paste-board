@@ -295,6 +295,22 @@ $$;
 revoke all on function public.get_all_pasteboard_users() from public;
 grant execute on function public.get_all_pasteboard_users() to authenticated;
 
+create or replace function public.get_pasteboard_paste_authors()
+returns table (owner_id uuid, username text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select distinct paste.owner_id, member.username
+  from public.pastes as paste
+  join public.pasteboard_members as member on member.user_id = paste.owner_id
+  where paste.owner_id is not null
+    and public.is_pasteboard_approved();
+$$;
+revoke all on function public.get_pasteboard_paste_authors() from public;
+grant execute on function public.get_pasteboard_paste_authors() to authenticated;
+
 create or replace function public.create_pasteboard_member_for_auth_user()
 returns trigger
 language plpgsql
