@@ -247,6 +247,24 @@ main {
   margin-top: 12px;
 }
 
+.footer-credit {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-left: 18px;
+  padding-left: 18px;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.footer-credit strong {
+  color: var(--accent);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  font-weight: 500;
+}
+
 @media (max-width: 760px) {
   .app-shell {
     width: min(100% - 32px, 1120px);
@@ -299,6 +317,13 @@ main {
     grid-template-columns: 28px 1fr 18px;
     gap: 8px;
     padding: 12px;
+  }
+
+  .footer-credit {
+    width: 100%;
+    margin-left: 35px;
+    padding-left: 0;
+    border-left: 0;
   }
 }
 
