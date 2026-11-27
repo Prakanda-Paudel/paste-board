@@ -366,3 +366,36 @@ create policy "Approved authors and admins can delete pastes"
 revoke all on table public.pastes from public, anon;
 grant select, insert, delete on table public.pastes to authenticated;
 revoke update on table public.pastes from authenticated;
+
+create table if not exists public.paste_reactions (
+  paste_id bigint not null references public.pastes(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  reaction text not null check (reaction in ('like', 'dislike')),
+  created_at timestamptz not null default now(),
+  primary key (paste_id, user_id)
+);
+
+alter table public.paste_reactions enable row level security;
+revoke all on table public.paste_reactions from public, anon, authenticated;
+grant select, insert, update, delete on table public.paste_reactions to authenticated;
+
+drop policy if exists "Approved users can read paste reactions" on public.paste_reactions;
+create policy "Approved users can read paste reactions"
+  on public.paste_reactions for select to authenticated
+  using ((select public.is_pasteboard_approved()));
+
+drop policy if exists "Approved users can add own paste reactions" on public.paste_reactions;
+create policy "Approved users can add own paste reactions"
+  on public.paste_reactions for insert to authenticated
+  with check ((select public.is_pasteboard_approved()) and user_id = (select auth.uid()));
+
+drop policy if exists "Approved users can update own paste reactions" on public.paste_reactions;
+create policy "Approved users can update own paste reactions"
+  on public.paste_reactions for update to authenticated
+  using ((select public.is_pasteboard_approved()) and user_id = (select auth.uid()))
+  with check ((select public.is_pasteboard_approved()) and user_id = (select auth.uid()));
+
+drop policy if exists "Approved users can delete own paste reactions" on public.paste_reactions;
+create policy "Approved users can delete own paste reactions"
+  on public.paste_reactions for delete to authenticated
+  using ((select public.is_pasteboard_approved()) and user_id = (select auth.uid()));

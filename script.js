@@ -550,19 +550,40 @@ async function loadPastes() {
   }
   if (authorsError) console.error("Couldn’t load paste writer names", authorsError);
   const authorNames = new Map((authors || []).map((author) => [author.owner_id, author.username]));
+  const reactionSummaries = new Map(data.map((paste) => [String(paste.id), { likes: 0, dislikes: 0, mine: null }]));
+  let reactionError = null;
+  if (data.length) {
+    const result = await supabaseClient
+      .from("paste_reactions")
+      .select("paste_id, user_id, reaction")
+      .in("paste_id", data.map((paste) => paste.id));
+    reactionError = result.error;
+    if (reactionError) {
+      console.error("Couldn’t load paste reactions", reactionError);
+    } else {
+      result.data.forEach((reaction) => {
+        const summary = reactionSummaries.get(String(reaction.paste_id));
+        if (!summary) return;
+        if (reaction.reaction === "like") summary.likes += 1;
+        if (reaction.reaction === "dislike") summary.dislikes += 1;
+        if (reaction.user_id === currentUserId) summary.mine = reaction.reaction;
+      });
+    }
+  }
   pasteList.replaceChildren();
   if (!data.length) pasteList.append(emptyState("No pastes yet. Share the first one."));
   data.forEach((paste) => {
     const authorName = authorNames.get(paste.owner_id)
       || (paste.owner_id === currentUserId ? accountUsernameInput.value || ADMIN_ID : "Hub member");
-    pasteList.append(createPasteCard(paste, authorName));
+    pasteList.append(createPasteCard(paste, authorName, reactionSummaries.get(String(paste.id)), Boolean(reactionError)));
   });
-  setMessage(pasteStatus, authorsError
-    ? "Pastes loaded, but writer names couldn’t be loaded."
-    : `${data.length} paste${data.length === 1 ? "" : "s"}`, Boolean(authorsError));
+  const loadError = authorsError ? "writer names" : reactionError ? "reactions" : null;
+  setMessage(pasteStatus, loadError
+    ? `Pastes loaded, but ${loadError} couldn’t be loaded.`
+    : `${data.length} paste${data.length === 1 ? "" : "s"}`, Boolean(loadError));
 }
 
-function createPasteCard(paste, authorName) {
+function createPasteCard(paste, authorName, reactionSummary, reactionError) {
   const card = document.createElement("article");
   card.className = "paste-item";
   const metadata = document.createElement("div");
@@ -626,10 +647,41 @@ function createPasteCard(paste, authorName) {
   const body = document.createElement("pre");
   body.className = "paste-content";
   body.textContent = paste.content;
+  const reactions = document.createElement("div");
+  reactions.className = "paste-reactions";
+  [["like", "Like", reactionSummary.likes], ["dislike", "Dislike", reactionSummary.dislikes]].forEach(([value, label, count]) => {
+    const button = document.createElement("button");
+    button.className = `paste-reaction${reactionSummary.mine === value ? " is-selected" : ""}`;
+    button.type = "button";
+    button.disabled = reactionError;
+    button.setAttribute("aria-pressed", String(reactionSummary.mine === value));
+    button.textContent = `${label} · ${count}`;
+    button.addEventListener("click", () => togglePasteReaction(paste, value, reactionSummary, reactions));
+    reactions.append(button);
+  });
   details.append(authorRow, time);
   metadata.append(details, actions);
-  card.append(metadata, title, body);
+  card.append(metadata, title, body, reactions);
   return card;
+}
+
+async function togglePasteReaction(paste, reaction, summary, reactionBar) {
+  if (!currentUserId || (!isApproved && !isAdmin)) return;
+  const buttons = [...reactionBar.querySelectorAll("button")];
+  buttons.forEach((button) => { button.disabled = true; });
+  const result = summary.mine === reaction
+    ? await supabaseClient.from("paste_reactions").delete().eq("paste_id", paste.id).eq("user_id", currentUserId)
+    : await supabaseClient.from("paste_reactions").upsert(
+      { paste_id: paste.id, user_id: currentUserId, reaction },
+      { onConflict: "paste_id,user_id" }
+    );
+  if (result.error) {
+    console.error("Couldn’t save paste reaction", result.error);
+    setMessage(pasteStatus, "Couldn’t save your reaction. Please try again.", true);
+    buttons.forEach((button) => { button.disabled = false; });
+    return;
+  }
+  await loadPastes();
 }
 
 async function checkAdminRole() {

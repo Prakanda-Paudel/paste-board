@@ -275,6 +275,10 @@ h1 { margin: 0; font-size: 42px; line-height: 1.08; }
 .paste-author { color: var(--ink); font-size: 12px; overflow-wrap: anywhere; }
 .paste-admin-badge { padding: 2px 5px; border-radius: 3px; background: var(--accent-soft); color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: 0.06em; }
 .paste-time { color: var(--muted); font-size: 11px; }
+.paste-reactions { display: flex; gap: 8px; padding: 0 15px 14px; }
+.paste-reaction { min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; }
+.paste-reaction:hover:not(:disabled), .paste-reaction.is-selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.paste-reaction:disabled { cursor: default; opacity: 0.65; }
 .paste-actions { display: flex; align-items: center; gap: 7px; }
 .paste-title { margin: 0; padding: 14px 15px 0; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
 .paste-content { overflow-x: auto; margin: 0; padding: 14px 15px; font-family: "Cascadia Code", Consolas, monospace; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
